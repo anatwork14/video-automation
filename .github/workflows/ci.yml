@@ -17,6 +17,10 @@ jobs:
         run: python -m compileall -q .
       - name: Check manifest / timeline structure
         run: python validate.py
+      - name: Check FFmpeg/FFprobe are installed
+        run: |
+          ffmpeg -version | head -n 1
+          ffprobe -version | head -n 1
       - name: Unit tests
         run: python -m unittest discover -s tests -v
       - name: Security boundaries
