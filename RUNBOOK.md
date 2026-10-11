@@ -49,3 +49,5 @@ CI không tải các video thật và chưa thử MP4 cuối; pass CI không ch�
 - Đánh dấu `approved` đúng kiểu JSON boolean `true` và `rights_checked/source_read` tương ứng. Chuỗi `"false"` bị từ chối.
 
 **Về file tải thủ công:** không dùng `download_assets.py` để chứng thực một MP4 tự đặt vào `assets/`. Nếu tệp thiếu sidecar, di chuyển tệp ấy ra ngoài và tải lại bằng script từ URL gốc USGS. Nếu nguồn không còn khả dụng, phải tìm nguồn mới có URL/rights rõ ràng và cập nhật manifest sau khi tự kiểm tra, tuyệt đối không tạo provenance giả.
+
+**Không gửi video cũ:** mỗi lần render có `output/build_manifest.json`. Chạy `python qa.py` trước khi tải lên; input, source video, narration, review hoặc MP4 thay đổi đều bị phát hiện qua SHA256.

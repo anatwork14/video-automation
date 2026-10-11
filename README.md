@@ -54,3 +54,10 @@ Không dùng giọng AI: `python pipeline.py prepare --no-tts --no-subtitles --a
 Đọc tiếp [RUNBOOK.md](RUNBOOK.md), [SCIENCE_AUDIT.md](SCIENCE_AUDIT.md), [AGENTS.md](AGENTS.md).
 
 **Bảo vệ bản gốc:** `download_assets.py` từ chối MP4 thủ công không có SHA256 sidecar, thay vì tự ghi hash và tin file. Với URL gốc hoạt động, hãy chuyển file nghi vấn sang chỗ khác và chạy downloader để tự tải lại từ nguồn USGS.
+
+## Kiểm tra chất lượng & dấu vết đầu ra
+
+- `build.py` xuất `output/build_manifest.json` chứa SHA256 của MP4 và chính xác các file đầu vào (bao gồm source USGS, lời thoại, hash duyệt, logo và code render). `qa.py` sẽ báo lỗi nếu MP4 cũ không còn khớp với source/script hiện tại.
+- Audio TTS sẽ được ghi chú **GIỌNG ĐỌC TỔNG HỢP: EDGE TTS** ở outro; footage vẫn bắt buộc là bản ghi thật.
+- Với giọng thu âm thủ công, renderer tự bỏ phụ đề thiếu timestamps; nếu file voiceover dài hơn thời gian từ sau intro đến cuối video, renderer sẽ dừng thay vì cắt mất câu cuối.
+- CI chạy render smoke tại 1080×1920, kiểm tra input giả được tạo bằng FFmpeg, không dùng như tư liệu cho sản phẩm chính. Cần thêm kiểm duyệt visual của bản MP4 cuối.

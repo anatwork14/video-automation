@@ -15,7 +15,7 @@ class BuildReceiptTests(unittest.TestCase):
             (root / "assets/logos_from_assignment.png").write_bytes(b"logo")
             for p in ["assets.json","claims.json","narration.json","timeline.json",
                       "group.json","review.json","build.py","subtitles.py",
-                      "voiceover.py","review_gate.py"]:
+                      "voiceover.py","review_gate.py","build_provenance.py","media_audit.py","science_gate.py","pipeline.py"]:
                 (root / p).write_text("{}")
             (root / "assets.json").write_text('{"assets":[]}')
             (root / "narration.json").write_text('{"segments":[]}')
@@ -35,7 +35,7 @@ class BuildReceiptTests(unittest.TestCase):
             (root / "assets/logos_from_assignment.png").write_bytes(b"logo")
             for p in ["assets.json","claims.json","narration.json","timeline.json",
                       "group.json","review.json","build.py","subtitles.py",
-                      "voiceover.py","review_gate.py"]:
+                      "voiceover.py","review_gate.py","build_provenance.py","media_audit.py","science_gate.py","pipeline.py"]:
                 (root / p).write_text("{}")
             (root / "assets.json").write_text('{"assets":[]}')
             (root / "narration.json").write_text('{"segments":[]}')

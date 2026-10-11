@@ -37,3 +37,8 @@ edge-tts (rany2/edge-tts, ĐÃ TÍCH HỢP mặc định), FFmpeg (FFmpeg/FFmpeg
 - voiceover.py chạy Edge TTS không dùng API trả phí. KHÔNG thay đổi câu chuyện khoa học để giọng đọc nghe hay hơn.
 - subtitles.py dùng timing TTS thật, không tạo mốc thời gian đoán; nếu không có timestamps, dừng hoặc yêu cầu phụ đề chỉnh tay.
 - build.py không được tự loop video, lặp sự kiện hoặc freeze để lấp thiếu footage mà không thông báo rõ; phải dùng đủ nguồn thực.
+
+## Content-bound approvals (critical)
+- Reuse existing approvals ONLY when review.json digests match current assets.json, exact MP4 SHA256, claims.json, narration.json, audio bytes, logos, and build code.
+- Reviewer fields must be JSON boolean true, exact registered member name and timezone-aware ISO8601 time. Never synthesize reviewer name/date or text excerpts.
+- For publication, QA requires output/build_manifest.json to match current MP4 and inputs; NEVER claim an old MP4 passed QA after a script edit.

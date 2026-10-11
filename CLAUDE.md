@@ -9,3 +9,6 @@ Phân vai khuyến nghị:
 - Human: chấp thuận usage rights, kịch bản và đầu ra trước đăng.
 
 Với mọi output phải liệt kê: bằng chứng đã có; điểm chưa được xác thực; lệnh tái tạo; giới hạn của tự động hóa. Không khẳng định đã duyệt thay người dùng.
+
+- Mandatory: run python review_hashes.py (read-only); require user to sign all approvals in review.json. Never auto-populate true/name/ISO time/source excerpts.
+- Require successful python validate.py --strict, python pipeline.py render, python qa.py and human visual/audio/scientific verification. CI alone is never end-to-end certification.
