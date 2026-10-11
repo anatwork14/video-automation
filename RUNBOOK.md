@@ -10,9 +10,9 @@
 ## Miễn phí — tự chuẩn bị footage + giọng đọc
 ```bash
 python pipeline.py prepare --assignment-pdf /path/to/261-KHOA-HOC-TRAI-DAT-1013-TIKTOK.pdf
-# Mặc định TTS trực tuyến Edge giọng nam tiếng Việt, không key.
+# Mặc định TTS trực tuyến Edge, giọng tiếng Anh en-US-GuyNeural (video nộp 100% tiếng Anh), không key.
 # Chọn giọng nữ, cần ghi đè audio khi đã nghe và đồng ý bản script mới:
-python pipeline.py prepare --assignment-pdf /path/to/file.pdf --voice vi-VN-HoaiMyNeural --force-tts
+python pipeline.py prepare --assignment-pdf /path/to/file.pdf --voice en-US-ChristopherNeural --force-tts
 ```
 Tự tải MP4 qua các URL USGS, tạo SHA256 sidecar và audio/{01..05}.mp3 + .timings.json. Tự tạo captions.srt từ TTS WordBoundary; **không có giả thời điểm âm thanh**.
 - Nếu network/source thất bại: chạy lại downloader. Downloader KHÔNG chứng thực file tải tay (không có provenance); nếu URL gốc không còn hoạt động, tìm nguồn mới có URL/quyền rõ ràng, cập nhật assets.json sau khi tự kiểm tra.
@@ -81,7 +81,7 @@ cp group.example.json group.json            # điền 3–5 thành viên, MSSV, 
 cp review.example.json review.json          # để trống; chỉ người duyệt điền
 
 # 1. Chuẩn bị: tải footage gốc USGS (+provenance), logo, giọng TTS từng cảnh, phụ đề
-python pipeline.py prepare --assignment-pdf /path/to/GE1013_TIKTOK.pdf [--voice vi-VN-HoaiMyNeural] [--rate -5%]
+python pipeline.py prepare --assignment-pdf /path/to/GE1013_TIKTOK.pdf [--voice en-US-GuyNeural] [--rate -5%]
 
 # 2. Đo đạc để NGƯỜI quyết định cửa sổ clip / cắt viền (không tự áp dụng)
 python footage_report.py                    # xem output/previews/*.png, sửa timeline.json nếu đồng ý

@@ -39,3 +39,6 @@ Rà soát do agent thực hiện; mọi trang www.usgs.gov đều trả 403/405 
 - Credit: trang USGS ghi footage khe nứt 22 là "courtesy of the U.S. Department of the Interior Office of Aviation Services"; dải credit trong video in đúng `agency_credit`, nhưng chú thích cảnh và outro chỉ ghi "USGS".
 - Video đỉnh núi: media item có ngày 1/7, `assets.json` ghi "published July 2" (ngày chronology).
 
+## Chuyển sang bản tiếng Anh (2026-10-11)
+Video nộp phải 100% tiếng Anh. narration.json/timeline.json đã được dịch, giữ nghĩa khoa học theo claims.json (vốn bằng tiếng Anh). Ba chỗ dùng đúng từ của claim thay cho bản tiếng Việt bị đánh giá là cường điệu: "lava spattering", "SUMMIT COLLAPSE EVENT", "late on June 3" (xem NARRATION_AND_STORYBOARD.md › Translation notes). Mọi duyệt script/timeline/audio cũ tự mất hiệu lực vì digest thay đổi; nhóm phải đọc lại, nghe lại giọng `en-US-GuyNeural` (phát âm Kīlauea, Halemaʻumaʻu, Kapoho, laze) và ký lại. Kapoho vẫn **BLOCKED**.
+

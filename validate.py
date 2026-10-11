@@ -20,6 +20,22 @@ def contains_vietnamese_prose(text):
     # NFC first: decomposed (NFD) Vietnamese pasted from macOS must not bypass the gate.
     return bool(VIETNAMESE_PROSE.search(unicodedata.normalize("NFC", str(text))))
 
+
+def english_problems(segments, narration, group):
+    """Everything that reaches the screen or the voice must be English for an English group."""
+    errors = []
+    for index, scene in enumerate(segments):
+        content = str(scene.get("heading", "")) + " " + str(scene.get("caption", ""))
+        if contains_vietnamese_prose(content):
+            errors.append(f"English group: video scene {index} still has Vietnamese on-screen prose")
+    if contains_vietnamese_prose(group.get("course", "")):
+        errors.append("English group: translate course text in group.json")
+    for speech in narration.get("segments", []):
+        if contains_vietnamese_prose(speech.get("text", "")):
+            errors.append(f"English group: voiceover scene {speech.get('index')} is still Vietnamese")
+    return errors
+
+
 MEDIA_HOST = "usgs-ocapsv2-public-input-media.s3.us-west-2.amazonaws.com"
 
 
@@ -114,15 +130,7 @@ def validate(strict=False, root=ROOT):
     if narration.get("language") != group.get("language"):
         errors.append("Narration language does not match group language")
     if group.get("language") == "en":
-        for index, scene in enumerate(segments):
-            content = str(scene.get("heading", "")) + " " + str(scene.get("caption", ""))
-            if contains_vietnamese_prose(content):
-                errors.append(f"English group: video scene {index} still has Vietnamese on-screen prose")
-        if contains_vietnamese_prose(group.get("course", "")):
-            errors.append("English group: translate course text in group.json")
-        for speech in narration.get("segments", []):
-            if contains_vietnamese_prose(speech.get("text", "")):
-                errors.append(f"English group: voiceover scene {speech.get('index')} is still Vietnamese")
+        errors.extend(english_problems(segments, narration, group))
     try:
         review_bytes = (root / "review.json").read_bytes()
         review = json.loads(review_bytes.decode("utf-8"))

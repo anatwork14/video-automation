@@ -6,41 +6,41 @@
       "kind": "intro",
       "duration": 10,
       "heading": "KĪLAUEA 2018",
-      "caption": "Những khe nứt phun dung nham và sự sụt lún ở đỉnh núi"
+      "caption": "Eruptive fissures and a collapsing summit"
     },
     {
       "kind": "video",
       "asset_id": "may16_fissure18",
       "duration": 22,
-      "heading": "16.05.2018 | KHE NỨT 18",
-      "caption": "Tư liệu hiện trường thật · USGS"
+      "heading": "16 MAY 2018 | FISSURE 18",
+      "caption": "Authentic field footage · USGS"
     },
     {
       "kind": "video",
       "asset_id": "may22_fissure22",
       "duration": 22,
-      "heading": "22.05.2018 | DUNG NHAM DI CHUYỂN",
-      "caption": "Video drone USGS · Đới nứt phía Đông"
+      "heading": "22 MAY 2018 | LAVA ON THE MOVE",
+      "caption": "USGS drone video · East Rift Zone"
     },
     {
       "kind": "video",
       "asset_id": "jun04_kapoho",
       "duration": 26,
-      "heading": "04.06.2018 | VỊNH KAPOHO",
-      "caption": "Quay 04/06 · Dung nham vào biển tối 03/06"
+      "heading": "4 JUNE 2018 | KAPOHO BAY",
+      "caption": "Filmed June 4 · Ocean entry began late June 3"
     },
     {
       "kind": "video",
       "asset_id": "jun30_summit",
       "duration": 29,
-      "heading": "30.06.2018 | ĐỈNH NÚI SỤT LÚN",
-      "caption": "Đá rơi và cột khí bụi · USGS"
+      "heading": "30 JUNE 2018 | SUMMIT COLLAPSE EVENT",
+      "caption": "Rockfall and a small dust plume · USGS"
     },
     {
       "kind": "outro",
       "duration": 11,
       "heading": "KĪLAUEA 2018",
-      "caption": "Nguồn hình ảnh: USGS · Kiến thức: USGS / Neal et al. (2019)"
+      "caption": "Footage: USGS · Science: USGS / Neal et al. (2019)"
     }
   ]
 }

@@ -1,9 +1,11 @@
 # GE1013 Video Automation — footage thật, có nguồn USGS
 
+> **Video nộp bài phải 100% tiếng Anh**: `narration.json` (language `en`), `timeline.json`, `group.json` (language `en`, course tiếng Anh) và giọng mặc định `en-US-GuyNeural`. `tests/test_english_only.py` chặn mọi chữ/lời tiếng Việt còn sót.
+
 Mục tiêu: sản xuất bản nháp TikTok địa chất 120 giây (108–132 giây theo đề bài), **chỉ sử dụng video tư liệu thật**, AI hỗ trợ nghiên cứu và giọng đọc (được ghi rõ là giọng tổng hợp). Không có ảnh hay video AI-generated. Nội dung mẫu: **Kīlauea 2018**, nhóm cần xác nhận trước khi nộp.
 
 ## ĐÃ TÍCH HỢP
-- **Free TTS mặc định:** [rany2/edge-tts](https://github.com/rany2/edge-tts), giọng `vi-VN-NamMinhNeural`, không cần API key hoặc phí theo lượt gọi hiện tại; cần Internet. KHÔNG phải phần mềm TTS offline, tính ổn định và quyền sử dụng do nhà cung cấp quyết định. Có thể chọn giọng nữ `vi-VN-HoaiMyNeural`.
+- **Free TTS mặc định:** [rany2/edge-tts](https://github.com/rany2/edge-tts), giọng mặc định theo ngôn ngữ narration (tiếng Anh: `en-US-GuyNeural`; tiếng Việt: `vi-VN-NamMinhNeural`), không cần API key hoặc phí theo lượt gọi hiện tại; cần Internet. KHÔNG phải phần mềm TTS offline, tính ổn định và quyền sử dụng do nhà cung cấp quyết định. Giọng nữ tiếng Anh: `en-US-JennyNeural`.
 - **Word timestamps:** speech output kèm WordBoundary và hash nội dung script, sinh caption từ thời điểm từng từ, không ước lượng từ số chữ. Nội dung thay đổi sẽ chặn dùng lại giọng/phụ đề cũ.
 - **Fact/provenance gate:** `claims.json` và `SCIENCE_AUDIT.md` chứa bằng chứng USGS; người thật duyệt từng claim trong `review.json`. `media_audit.py` xác minh SHA256, file có video stream và đủ thời lượng. Clip thiếu bị chặn, KHÔNG tự đóng băng khung hình.
 - **Dựng tự động:** FFmpeg/Pillow ghép 9:16, intro có logo, nhóm, MSSV, subtitles và source credit, QA kỹ thuật.
@@ -37,7 +39,7 @@ python pipeline.py render
 # output/GE1013_Kilauea_2018_DRAFT.mp4
 ```
 
-Giọng khác: `python pipeline.py prepare --voice vi-VN-HoaiMyNeural --force-tts --assignment-pdf ...`. Tốc độ đọc: `--rate -5%` hoặc `--rate +8%` (phải có dấu).
+Giọng khác: `python pipeline.py prepare --voice en-US-ChristopherNeural --force-tts --assignment-pdf ...` (giọng phải cùng ngôn ngữ với narration). Tốc độ đọc: `--rate -5%` hoặc `--rate +8%` (phải có dấu).
 
 Trình tự đầy đủ từ chuẩn bị đến `release_check.py`: xem RUNBOOK.md › Trình tự đầy đủ.
 

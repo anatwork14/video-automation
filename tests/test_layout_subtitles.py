@@ -57,6 +57,17 @@ class AlignmentTests(unittest.TestCase):
                 self.assertLessEqual(box[3], build.SUB_BOTTOM)
 
 
+class BalancedSubtitleTests(unittest.TestCase):
+    def test_two_line_cue_does_not_strand_one_word(self):
+        with patch.object(build, "FONT_PATH", FONT):
+            face = build.font(56)
+            lines = build.balance_lines(["While lava erupted in the lower rift", "zone,"], face)
+            self.assertEqual(" ".join(lines), "While lava erupted in the lower rift zone,")
+            widths = [face.getlength(x) for x in lines]
+            self.assertLess(max(widths) - min(widths), 0.5 * max(widths))
+            self.assertEqual(build.balance_lines(["one line only"], face), ["one line only"])
+
+
 class LayoutTests(unittest.TestCase):
     def setUp(self):
         patcher = patch.object(build, "FONT_PATH", FONT)

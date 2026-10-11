@@ -87,6 +87,19 @@ def concat_line(path):
     return "file '" + str(path).replace("'", "'\\''") + "'\n"
 
 
+# Every fixed on-screen string, per language. An English video must use ONLY the "en" set.
+LABELS = {
+    "en": {"team": "GROUP ", "authentic": "AUTHENTIC USGS FOOTAGE · NO AI-GENERATED IMAGES",
+           "synthetic_voice": "Synthetic AI voice"},
+    "vi": {"team": "NHÓM ", "authentic": "VIDEO THẬT: USGS · KHÔNG SỬ DỤNG HÌNH AI",
+           "synthetic_voice": "Giọng đọc tổng hợp (AI)"},
+}
+
+
+def labels(group):
+    return LABELS["en" if group.get("language") == "en" else "vi"]
+
+
 def font(size):
     return ImageFont.truetype(FONT_PATH, size)
 
@@ -159,9 +172,20 @@ def draw_credit(d, credit):
     return (0, CREDIT_TOP, W, H)
 
 
+def balance_lines(lines, face):
+    """Re-split a two-line subtitle so both lines have similar width (no stranded last word)."""
+    if len(lines) != 2:
+        return lines
+    words = " ".join(lines).split()
+    splits = [(" ".join(words[:k]), " ".join(words[k:])) for k in range(1, len(words))]
+    fitting = [pair for pair in splits if max(face.getlength(x) for x in pair) <= TEXT_WIDTH]
+    return list(min(fitting, key=lambda pair: max(face.getlength(x) for x in pair))) if fitting else lines
+
+
 def subtitle_image(text):
     """Transparent strip for the subtitle band; returns (image, bbox in frame coordinates)."""
     face, size, lines = fit_text(text, 56, 40, TEXT_WIDTH, 2, "Subtitle cue")
+    lines = balance_lines(lines, face)
     image = Image.new("RGBA", (W, SUB_BOTTOM - SUB_TOP), (0, 0, 0, 0))
     d = ImageDraw.Draw(image)
     step = round(size * 1.22)
@@ -193,8 +217,7 @@ def make_card(file, seg, intro, group, assets_dir, disclosure=None):
     boxes = []
     if intro:
         y = max(y + 90, 1110)
-        team_label = "GROUP " if group.get("language") == "en" else "NHÓM "
-        d.text((W // 2, y), team_label + str(group["group_number"]), font=font(54),
+        d.text((W // 2, y), labels(group)["team"] + str(group["group_number"]), font=font(54),
                anchor="mm", fill="#ffe3a1")
         y += 90
         for member in group["team_members"]:
@@ -205,9 +228,7 @@ def make_card(file, seg, intro, group, assets_dir, disclosure=None):
     else:
         if y > SUB_TOP:
             raise ValueError(f"Card text runs into the subtitle band: {seg['heading']!r}")
-        label = ("AUTHENTIC USGS FOOTAGE · NO AI-GENERATED IMAGES"
-                 if group.get("language") == "en"
-                 else "VIDEO THẬT: USGS · KHÔNG SỬ DỤNG HÌNH AI")
+        label = labels(group)["authentic"]
         d.text((W // 2, CARD_LABEL_Y), label, font=font(27), anchor="mm", fill="#c8e2f8")
         boxes.append(d.textbbox((W // 2, CARD_LABEL_Y), label, font=font(27), anchor="mm"))
     if disclosure:
@@ -335,8 +356,7 @@ def build_audio(segments, scene_audio, recorded, target, cwd=ROOT):
 def voice_disclosure(group, mode):
     if not group.get("_synthetic_voice"):
         return None
-    english = group.get("language") == "en"
-    text = "Synthetic AI voice" if english else "Giọng đọc tổng hợp (AI)"
+    text = labels(group)["synthetic_voice"]
     return text + (" · Edge TTS" if mode == "edge_tts" else "")
 
 
