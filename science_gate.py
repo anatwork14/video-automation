@@ -19,7 +19,7 @@ def check_claims(root):
             issues.append("Missing or repeated science claim ID")
         ids.add(key)
         index = row.get("scene")
-        if not isinstance(index, int) or not 0 <= index < len(scenes) or scenes[index].get("kind") != "video":
+        if not isinstance(index, int) or not 0 <= index < len(scenes) or scenes[index].get("kind") not in ("video", "outro"):
             issues.append(f"{key}: invalid video scene index")
         else:
             covered.add(index)

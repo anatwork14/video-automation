@@ -29,6 +29,34 @@
       "claim": "A collapse/explosion event filmed at Kīlauea summit June 30 included rockfall and a small plume; magma withdrawal reduced support at summit.",
       "reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-july-2-2018",
       "evidence_note": "USGS footage description specifies June 30 at 14:51 HST; uploaded page July 2; explains magma drainage."
+    },
+    {
+      "id": "magma_migration",
+      "scene": 2,
+      "claim": "Magma propagated eastward along the rift zone before May 3, 2018, as recorded in volcanic and seismic observations.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea",
+      "evidence_note": "USGS official 2018 eruption overview: April 30 Puʻuʻōʻō collapse followed by magma dike migration and May 3 initial fissure eruptions."
+    },
+    {
+      "id": "laze",
+      "scene": 3,
+      "claim": "Lava entering seawater creates a laze plume containing steam, hydrochloric acid, and fine volcanic glass particles; it can irritate lungs, eyes and skin.",
+      "reference": "https://www.usgs.gov/news/featured-story/kilauea-volcano-erupts",
+      "evidence_note": "USGS 'Kīlauea Volcano Erupts' and Kapoho Bay laze image: laze consists of steam, HCl, and tiny volcanic glass particles with hazardous effects."
+    },
+    {
+      "id": "summit_mechanism",
+      "scene": 4,
+      "claim": "Drainage of shallow summit magma reduced support beneath overlying rock, causing repeated collapse at Kīlauea summit.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-july-2-2018",
+      "evidence_note": "USGS video detail explains magma draining to East Rift Zone slowly removes support and crater floor collapses incrementally."
+    },
+    {
+      "id": "monitoring",
+      "scene": 5,
+      "claim": "Monitoring Kīlauea enabled forecasting of hazardous events and helps scientists explain hazards and risks.",
+      "reference": "https://www.usgs.gov/publications/2018-rift-eruption-and-summit-collapse-kilauea-volcano",
+      "evidence_note": "USGS/Neal et al. 2019 describes successful forecasting through careful historical observation and monitoring."
     }
   ]
 }

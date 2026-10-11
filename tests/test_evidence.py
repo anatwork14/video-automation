@@ -15,6 +15,17 @@ class EvidenceTests(unittest.TestCase):
     def test_current_manifest_has_evidence_per_scene(self):
         self.assertEqual(check_claims(ROOT), [])
 
+    def test_narration_markdown_is_synced(self):
+        narration = json.loads((ROOT / "narration.json").read_text(encoding="utf-8"))
+        markdown = (ROOT / "NARRATION_AND_STORYBOARD.md").read_text(encoding="utf-8")
+        for scene in narration["segments"]:
+            self.assertIn(scene["text"], markdown)
+
+    def test_all_distinct_science_claims_are_tracked(self):
+        d = json.loads((ROOT / "claims.json").read_text(encoding="utf-8"))
+        ids = {x["id"] for x in d["claims"]}
+        self.assertTrue({"magma_migration", "laze", "summit_mechanism", "monitoring"} <= ids)
+
     def test_kapoho_started_june3_not_june4(self):
         content = json.loads((ROOT / "claims.json").read_text())
         c = next(x for x in content["claims"] if x["id"] == "kapoho")

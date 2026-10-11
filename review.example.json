@@ -73,6 +73,38 @@
       "source_read": false,
       "approved_claim_sha256": "",
       "source_excerpt": ""
+    },
+    "magma_migration": {
+      "approved": false,
+      "reviewed_by": "",
+      "reviewed_at": "",
+      "source_read": false,
+      "approved_claim_sha256": "",
+      "source_excerpt": ""
+    },
+    "laze": {
+      "approved": false,
+      "reviewed_by": "",
+      "reviewed_at": "",
+      "source_read": false,
+      "approved_claim_sha256": "",
+      "source_excerpt": ""
+    },
+    "summit_mechanism": {
+      "approved": false,
+      "reviewed_by": "",
+      "reviewed_at": "",
+      "source_read": false,
+      "approved_claim_sha256": "",
+      "source_excerpt": ""
+    },
+    "monitoring": {
+      "approved": false,
+      "reviewed_by": "",
+      "reviewed_at": "",
+      "source_read": false,
+      "approved_claim_sha256": "",
+      "source_excerpt": ""
     }
   },
   "script": {
