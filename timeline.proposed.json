@@ -65,7 +65,7 @@
       "kind": "outro",
       "duration": 11,
       "heading": "KĪLAUEA 2018",
-      "caption": "Footage: USGS and U.S. DOI Office of Aviation Services · Science: USGS, Neal et al. (2019)",
+      "caption": "Footage: USGS and U.S. DOI Office of Aviation Services · Science: USGS, Neal et al. (2019) · Music: original score",
       "background": {
         "asset_id": "may22_fissure22",
         "start_seconds": 91.0,
@@ -73,5 +73,9 @@
       }
     }
   ],
-  "proposal_note": "EDITORIAL PROPOSAL ONLY (draft.py renders it, build.py never does). Windows measured on the downloaded USGS originals with 1 fps contact sheets; a reviewer must watch each window, then copy accepted values into timeline.json and approve its hash."
+  "proposal_note": "EDITORIAL PROPOSAL ONLY (draft.py renders it, build.py never does). Windows measured on the downloaded USGS originals with 1 fps contact sheets; a reviewer must watch each window, then copy accepted values into timeline.json and approve its hash.",
+  "music": {
+    "file": "assets/music/score.wav",
+    "lufs": -27
+  }
 }

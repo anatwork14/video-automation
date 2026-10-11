@@ -113,3 +113,8 @@ Kiểm thử gọi dịch vụ ngoài (Edge TTS trực tuyến) tách riêng: `m
 - `background {asset_id, start_seconds, crop?, credit}` trên intro/outro: footage thật làm nền mờ cho tiêu đề, có dòng credit.
 - Toàn bộ mix được chuẩn hóa −16 LUFS, đỉnh ≤ −1,5 dBTP; mỗi cảnh chuyển tiếp mờ 0,25 s.
 
+## Nhạc nền và watermark
+- `python music.py timeline.proposed.json` tạo bản nhạc nền GỐC (tổng hợp bằng sóng sin qua FFmpeg, không dùng mẫu hay nhạc của bên thứ ba) vào `assets/music/score.wav`; mỗi cảnh một hợp âm theo mạch truyện, nhịp tim ở cảnh sụt lún, kết bằng hợp âm chủ. Bật bằng `"music": {"file": "assets/music/score.wav", "lufs": -27}` trong timeline; giọng đọc tự hạ nhạc (sidechain). Duyệt timeline phải ghi `approved_music_sha256`. Đây không phải âm thanh núi lửa.
+- `python draft.py --no-watermark`: bản xem thử không watermark theo yêu cầu chủ dự án; manifest vẫn ghi UNAPPROVED. Bản FINAL chỉ đến từ `release_check.py --export-final`.
+- Thông tin nhóm riêng tư để trong `group_info/` (đã .gitignore) → `group.json` và `assets/logos_from_assignment.png` (cũng bị ignore). Không commit tên/MSSV/logo.
+

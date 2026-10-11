@@ -176,3 +176,77 @@ class IntroNarration(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OriginalScore(unittest.TestCase):
+    def test_score_is_deterministic_exact_length_and_ducks_under_the_voice(self):
+        import music
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            durations = [10, 22, 22, 26, 29, 11]
+            a = music.build_score(durations, d / "a.wav")
+            b = music.build_score(durations, d / "b.wav")
+            self.assertEqual(a.read_bytes(), b.read_bytes())
+            self.assertAlmostEqual(build.probe_length(a), 120.0, delta=0.01)
+            # ducking: a voice in scene 1 pushes the score down; the voiceless part keeps it
+            tone(d / "v.mp3", 6.0)
+            segments = [{"duration": 10}, {"duration": 12}]
+            out = build.build_audio(segments, {1: d / "v.mp3"}, None, d / "mix.m4a", cwd=d, music=(a, -27.0))
+            music_only, _ = build.loudness(["-ss", 2, "-t", 6, "-i", out], d)
+            with_voice, _ = build.loudness(["-ss", 10.5, "-t", 5, "-i", out], d)
+            self.assertGreater(with_voice - music_only, 6)
+            self.assertAlmostEqual(build.probe_length(out), 22.0, delta=0.05)
+
+    def test_wrong_scene_count_is_refused(self):
+        import music
+        with tempfile.TemporaryDirectory() as d, self.assertRaisesRegex(ValueError, "written for 6 scenes"):
+            music.build_score([60, 60], Path(d) / "x.wav")
+
+
+class MusicGates(unittest.TestCase):
+    def test_music_field_validation(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for name in ("assets.json", "claims.json", "narration.json", "timeline.json"):
+                (root / name).write_bytes((build.ROOT / name).read_bytes())
+            for bad in ({"file": "song.mp3", "lufs": -27}, {"file": "assets/music/score.wav", "lufs": -6},
+                        {"file": "assets/music/score.wav"}, "score.wav"):
+                t = _rd(root, "timeline.json")
+                t["music"] = bad
+                _w(root, "timeline.json", t)
+                self.assertTrue(any("music must be" in e for e in validate_mod.validate(root=root)), bad)
+
+    def test_timeline_approval_binds_the_score_bytes(self):
+        import review_gate
+        from fixture_project import make_project, write_review
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            make_project(root)
+            (root / "assets/music").mkdir()
+            (root / "assets/music/score.wav").write_bytes(b"score v1")
+            t = _rd(root, "timeline.json")
+            t["music"] = {"file": "assets/music/score.wav", "lufs": -27}
+            _w(root, "timeline.json", t)
+            h = review_gate.evidence_hashes(root, _rd(root, "assets.json")["assets"],
+                                            _rd(root, "claims.json")["claims"], _rd(root, "narration.json"))
+            write_review(root, lambda r: r["timeline"].update(approved_music_sha256=h["music_sha256"]))
+
+            def gate():
+                return review_gate.check_reviews(root, _rd(root, "group.json"), _rd(root, "review.json"),
+                                                 _rd(root, "assets.json")["assets"], _rd(root, "claims.json")["claims"],
+                                                 _rd(root, "narration.json"))
+            self.assertEqual(gate(), [])
+            (root / "assets/music/score.wav").write_bytes(b"score v2")
+            self.assertTrue(any("Background score" in e for e in gate()))
+
+
+class WatermarkOption(unittest.TestCase):
+    def test_overlay_without_watermark_has_no_red_pill(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(build, "FONT_PATH", FONT):
+            seg = {"heading": "H", "caption": "C"}
+            build.make_overlay(Path(d) / "with.png", seg, {"agency_credit": "USGS"}, None, "REVIEW DRAFT")
+            build.make_overlay(Path(d) / "without.png", seg, {"agency_credit": "USGS"}, None, None)
+            band = (300, build.WATERMARK_Y - 10, 780, build.WATERMARK_Y + 10)
+            red = lambda p: ImageStat.Stat(Image.open(p).convert("RGBA").crop(band)).mean
+            self.assertGreater(red(Path(d) / "with.png")[3], 100)    # opaque pill present
+            self.assertEqual(red(Path(d) / "without.png")[3], 0)     # fully transparent

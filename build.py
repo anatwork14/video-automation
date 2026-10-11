@@ -230,13 +230,13 @@ def make_card(file, seg, intro, group, assets_dir, disclosure=None, background=N
         logo_path = assets_dir / "logos_from_assignment.png"
         if logo_path.is_file():
             logo = Image.open(logo_path).convert("RGBA")
-            logo.thumbnail((1000, 200), Image.Resampling.LANCZOS)
+            logo.thumbnail((1000, 240), Image.Resampling.LANCZOS)
             image.alpha_composite(logo, ((W - logo.width) // 2, 110))
         else:  # never invent logos: show an explicit placeholder in review drafts
             d.rounded_rectangle((90, 110, W - 90, 290), radius=18, outline=(255, 227, 161, 255), width=3)
             d.text((W // 2, 200), "[School / course / sponsor logos: from the assignment PDF]",
                    font=font(30), anchor="mm", fill="#ffe3a1")
-        y = centered_lines(d, seg["heading"], 380, 96, 60, 2, "white", "Intro title", 1.1)
+        y = centered_lines(d, seg["heading"], 390, 96, 60, 2, "white", "Intro title", 1.1)
         y = centered_lines(d, seg["caption"], y + 24, 44, 30, 2, "#cee5f7", "Intro caption")
         y = centered_lines(d, group["course"], y + 40, 40, 28, 2, "#c8e2f8", "Course")
         y = centered_lines(d, labels(group)["team"] + str(group["group_number"]), y + 40, 52, 34, 1,
@@ -410,7 +410,7 @@ def bed_windows(segments, asset_index, assets_dir):
     return beds
 
 
-def build_audio(segments, scene_audio, recorded, target, cwd=ROOT, beds=None):
+def build_audio(segments, scene_audio, recorded, target, cwd=ROOT, beds=None, music=None):
     """One AAC encode for the whole film. Speech is padded with silence, never trimmed.
 
     Optional per-scene beds of the clip's own field audio are loudness-matched and
@@ -456,8 +456,21 @@ def build_audio(segments, scene_audio, recorded, target, cwd=ROOT, beds=None):
                              "after the intro. Shorten it; NEVER trim speech.")
         inputs += ["-i", recorded]
         chains.append(f"[0:a]{AUDIO_FORMAT},adelay={round(intro * 1000)}:all=1,apad=whole_dur={total}[a]")
+    out_label = "[a]"
+    if music:
+        # Original score under everything; the voice ducks it (sidechain) so speech stays clear.
+        src, lufs = music
+        measured, _ = loudness(["-i", src], cwd)
+        k = inputs.count("-i")
+        inputs += ["-i", src]
+        chains[-1] = chains[-1][:-len("[a]")] + "[dry]"
+        chains += ["[dry]asplit=2[mixin][key]",
+                   f"[{k}:a]{AUDIO_FORMAT},volume={lufs - measured:.2f}dB,apad=whole_dur={total},"
+                   f"atrim=end={total}[score]",
+                   "[score][key]sidechaincompress=threshold=0.02:ratio=6:attack=30:release=600[ducked]",
+                   "[mixin][ducked]amix=inputs=2:normalize=0:duration=first[a]"]
     mix = Path(target).with_suffix(".mix.wav")
-    run_ffmpeg([*inputs, "-filter_complex", ";".join(chains), "-map", "[a]", "-c:a", "pcm_s16le",
+    run_ffmpeg([*inputs, "-filter_complex", ";".join(chains), "-map", out_label, "-c:a", "pcm_s16le",
                 "-ar", "48000", mix], cwd=cwd)
     level, peak = loudness(["-i", mix], cwd)
     gain = min(TARGET_LUFS - level, TRUE_PEAK - peak) if level > -69.5 else 0.0
@@ -516,8 +529,11 @@ def render_film(root, group, synthetic_voice, audio_mode, no_subtitles=False, wa
                for i, seg in enumerate(segments)]
     concat = tmp_dir / "concat.txt"
     concat.write_text("".join(concat_line(p) for p in visuals), encoding="utf-8")
+    music = None
+    if timeline.get("music"):
+        music = (root / timeline["music"]["file"], float(timeline["music"]["lufs"]))
     audio = build_audio(segments, scene_audio, recorded, tmp_dir / "narration.m4a", cwd=root,
-                        beds=bed_windows(segments, asset_index, assets_dir))
+                        beds=bed_windows(segments, asset_index, assets_dir), music=music)
     final = out_dir / final_name
     run_ffmpeg(["-f", "concat", "-safe", "0", "-i", concat, "-i", audio, "-map", "0:v:0", "-map", "1:a:0",
                 "-c", "copy", "-movflags", "+faststart", final], cwd=root)

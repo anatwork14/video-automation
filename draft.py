@@ -55,6 +55,9 @@ def prepare_workspace(root, timeline_file):
     group_file = root / "group.json"
     if group_file.is_file():
         group = json.loads(group_file.read_text(encoding="utf-8"))
+        if not str(group.get("group_number", "")).strip():
+            group["group_number"] = "[number missing]"
+            placeholders.append("group.json has no group_number: shown as [number missing]")
     else:
         group = placeholder_group(narration.get("language"))
         placeholders.append("group.json missing: group number, member names and student IDs shown as placeholders")
@@ -75,7 +78,7 @@ def gate(workspace, group, narration):
     return errors, evidence
 
 
-def render_review_draft(root=ROOT, timeline_file=None, no_subtitles=False):
+def render_review_draft(root=ROOT, timeline_file=None, no_subtitles=False, watermark=True, voice_label=True):
     root = Path(root)
     if timeline_file is None:
         timeline_file = "timeline.proposed.json" if (root / "timeline.proposed.json").is_file() else "timeline.json"
@@ -86,8 +89,10 @@ def render_review_draft(root=ROOT, timeline_file=None, no_subtitles=False):
             print("STOP:", issue)
         raise SystemExit(1)
     mode = evidence["mode"]
-    synthetic = mode in ("edge_tts", "manual_scene")  # disclose unless a human recorded the voice
-    rendered = build.render_film(workspace, group, synthetic, mode, no_subtitles, WATERMARK, DRAFT_NAME)
+    # disclose unless a human recorded the voice, or the owner chose to omit the on-screen label
+    synthetic = mode in ("edge_tts", "manual_scene") and voice_label
+    rendered = build.render_film(workspace, group, synthetic, mode, no_subtitles,
+                                 WATERMARK if watermark else None, DRAFT_NAME)
     problems = technical_problems(workspace, rendered)
     out = root / "output"
     final = out / DRAFT_NAME
@@ -97,7 +102,8 @@ def render_review_draft(root=ROOT, timeline_file=None, no_subtitles=False):
         shutil.copyfile(captions, out / DRAFT_NAME.replace(".mp4", ".srt"))
     manifest = {
         "status": "UNAPPROVED_REVIEW_DRAFT",
-        "watermark": WATERMARK,
+        "watermark": WATERMARK if watermark else None,
+        "synthetic_voice_label_on_screen": synthetic,
         "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "video_file": final.name, "video_sha256": sha256_file(final),
         "timeline_file": timeline_file,
@@ -117,13 +123,20 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--timeline", default=None, help="timeline file (default: timeline.proposed.json if present)")
     parser.add_argument("--no-subtitles", action="store_true")
+    parser.add_argument("--no-watermark", action="store_true",
+                        help="omit the on-frame watermark (the file is STILL unapproved; manifest says so)")
+    parser.add_argument("--no-voice-label", action="store_true",
+                        help="omit the on-screen synthetic-voice label (owner's choice; disclose at upload instead)")
     args = parser.parse_args(argv)
-    final, problems, placeholders = render_review_draft(ROOT, args.timeline, args.no_subtitles)
+    final, problems, placeholders = render_review_draft(ROOT, args.timeline, args.no_subtitles,
+                                                        watermark=not args.no_watermark,
+                                                        voice_label=not args.no_voice_label)
     for item in placeholders:
         print("PLACEHOLDER:", item)
     for problem in problems:
         print("QA FAIL:", problem, file=sys.stderr)
-    print("REVIEW DRAFT:", final.relative_to(ROOT).as_posix(), "(UNAPPROVED; watermarked; do not upload)")
+    note = "watermarked; do not upload" if not args.no_watermark else "no watermark at the owner's request"
+    print("REVIEW DRAFT:", final.relative_to(ROOT).as_posix(), f"(UNAPPROVED; {note})")
     if problems:
         raise SystemExit(1)
 

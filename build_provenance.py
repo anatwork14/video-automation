@@ -18,7 +18,7 @@ RECEIPT = "output/build_manifest.json"
 CONFIG = ["assets.json", "claims.json", "narration.json", "timeline.json", "group.json",
           "review.json", "requirements.txt", "reviewers.allowed_signers",
           "assets/logos_from_assignment.png"]
-CODE = ["build.py", "build_provenance.py", "download_assets.py", "media_audit.py", "pipeline.py",
+CODE = ["build.py", "build_provenance.py", "download_assets.py", "media_audit.py", "music.py", "pipeline.py",
         "qa.py", "review_gate.py", "review_hashes.py", "review_signatures.py", "science_gate.py",
         "subtitles.py", "validate.py", "voiceover.py"]
 
@@ -34,6 +34,7 @@ def inputs_for(root):
     files = list(CONFIG) + list(CODE)  # listed even if absent, so deleting gate code stales the receipt
     files += sorted(p.name for p in root.glob("*.py"))  # plus any other pipeline module
     files += sorted(p.relative_to(root).as_posix() for p in (root / "review.sigs").glob("*.sig"))
+    files += _optional(root, "assets/music/score.wav")
     for item in assets:
         base = "assets/" + item["filename"]
         files += [base] + _optional(root, base[:-4] + ".sha256") + _optional(root, base[:-4] + ".provenance.json")

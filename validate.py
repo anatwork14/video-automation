@@ -74,6 +74,12 @@ def validate(strict=False, root=ROOT):
     segments = timeline.get("segments", [])
     if not segments or segments[0].get("kind") != "intro" or segments[-1].get("kind") != "outro":
         errors.append("Timeline must begin with intro and end with outro")
+    music = timeline.get("music")
+    if music is not None:
+        if (not isinstance(music, dict) or music.get("file") != "assets/music/score.wav"
+                or isinstance(music.get("lufs"), bool) or not isinstance(music.get("lufs"), (int, float))
+                or not -36 <= music["lufs"] <= -20):
+            errors.append("music must be {file: assets/music/score.wav (made by music.py), lufs: -36..-20}")
     if not any(s.get("kind") == "video" for s in segments):
         errors.append("Timeline needs at least one genuine footage (kind=video) scene")
     for index, seg in enumerate(segments):

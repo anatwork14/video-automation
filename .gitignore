@@ -20,3 +20,6 @@ __pycache__/
 .pytest_cache/
 .venv/
 .DS_Store
+
+# Private group information (names, student IDs, logos) - never commit
+group_info/

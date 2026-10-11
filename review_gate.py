@@ -179,6 +179,9 @@ def evidence_hashes(root, assets, claims, narration, group=None, timeline=None):
         result["claims"][claim["id"]] = {"approved_claim_sha256": sha256_object(claim)}
     logo = root / "assets" / "logos_from_assignment.png"
     result["logo_sha256"] = sha256_file(logo) if logo.is_file() else None
+    if isinstance(timeline, dict) and isinstance(timeline.get("music"), dict):
+        score = root / str(timeline["music"].get("file", ""))
+        result["music_sha256"] = sha256_file(score) if score.is_file() else None
     result["audio"], result["audio_errors"] = audio_evidence(root, narration, group)
     return result
 
@@ -243,6 +246,8 @@ def check_reviews(root, group, review, assets, claims, narration, timeline=None,
     errors.extend("Timeline: " + p for p in reviewer_problems(edit, valid_names, now=now))
     if not values["timeline_sha256"] or edit.get("approved_timeline_sha256") != values["timeline_sha256"]:
         errors.append("Timeline (clip order, start_seconds, crop, on-screen text) changed since approval")
+    if values.get("music_sha256", "absent") != "absent" and edit.get("approved_music_sha256") != values["music_sha256"]:
+        errors.append("Background score missing or changed since the timeline approval (approved_music_sha256)")
     logos = _section(review, "logos", errors)
     errors.extend("Logos: " + p for p in reviewer_problems(logos, valid_names, now=now))
     if logos.get("approved_sha256") != values["logo_sha256"] or not values["logo_sha256"]:
