@@ -23,3 +23,5 @@ __pycache__/
 
 # Private group information (names, student IDs, logos) - never commit
 group_info/
+# Alternative video projects: media and renders stay local
+variants/*/assets/*

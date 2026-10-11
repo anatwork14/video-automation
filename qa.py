@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 from build_provenance import verify_build_receipt
+from sources import is_still
 from validate import validate
 
 ROOT = Path(__file__).resolve().parent
@@ -148,22 +149,35 @@ def technical_problems(root, output):
     start = 0.0
     for index, seg in enumerate(timeline["segments"]):
         length = float(seg["duration"])
-        if seg.get("kind") == "video" and seg.get("asset_id") in assets:
-            rect = footage_rect(_probe(root / "assets" / assets[seg["asset_id"]]["filename"]), seg)
-            if rect is None:
-                errors.append(f"Scene {index}: cannot locate footage area for black/freeze QA")
-            else:
-                w, h, x, y = rect
-                result = _ffmpeg(["-ss", start, "-t", length, "-i", output, "-an",
-                                  "-vf", f"crop={w}:{h}:{x}:{y},{BLACK},{FREEZE}", "-f", "null", "-"])
-                if result.returncode:
-                    errors.append(f"Scene {index}: black/freeze detection failed to run")
-                for t in re.findall(r"black_start:\s*([\d.]+)", result.stderr):
-                    errors.append(f"Scene {index}: black footage from {start + float(t):.2f}s "
-                                  "(USGS slate/card? choose another start_seconds)")
-                for t in re.findall(r"freeze_start:\s*([\d.]+)", result.stderr):
-                    errors.append(f"Scene {index}: frozen footage from {start + float(t):.2f}s "
-                                  "(title card or padding? choose another start_seconds)")
+        if seg.get("kind") == "video":
+            windows = seg["shots"] if seg.get("shots") else [dict(seg, duration=length)]
+            offset = start
+            for k, shot in enumerate(windows):
+                where = f"Scene {index}" + (f" shot {k}" if seg.get("shots") else "")
+                media = assets.get(shot.get("asset_id"))
+                span = float(shot["duration"])
+                if not media:
+                    errors.append(f"{where}: unknown footage for black/freeze QA")
+                    offset += span
+                    continue
+                rect = footage_rect(_probe(root / "assets" / media["filename"]), shot)
+                if rect is None:
+                    errors.append(f"{where}: cannot locate footage area for black/freeze QA")
+                else:
+                    w, h, x, y = rect
+                    # Genuine stills get a deliberate slow push-in: freeze detection does not apply.
+                    checks = BLACK if is_still(media["filename"]) else f"{BLACK},{FREEZE}"
+                    result = _ffmpeg(["-ss", offset, "-t", span, "-i", output, "-an",
+                                      "-vf", f"crop={w}:{h}:{x}:{y},{checks}", "-f", "null", "-"])
+                    if result.returncode:
+                        errors.append(f"{where}: black/freeze detection failed to run")
+                    for t in re.findall(r"black_start:\s*([\d.]+)", result.stderr):
+                        errors.append(f"{where}: black footage from {offset + float(t):.2f}s "
+                                      "(USGS slate/card? choose another start_seconds)")
+                    for t in re.findall(r"freeze_start:\s*([\d.]+)", result.stderr):
+                        errors.append(f"{where}: frozen footage from {offset + float(t):.2f}s "
+                                      "(title card or padding? choose another start_seconds)")
+                offset += span
         start += length
     return errors
 

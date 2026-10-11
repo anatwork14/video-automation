@@ -11,6 +11,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from sources import is_still
+
 ROOT = Path(__file__).resolve().parent
 
 
@@ -42,7 +44,9 @@ def audit(root=ROOT):
     by_id = {a["id"]: a for a in assets}
     windows = []
     for scene in scenes:
-        if scene.get("kind") == "video":
+        if isinstance(scene.get("shots"), list):
+            windows.extend(s for s in scene["shots"] if isinstance(s, dict))
+        elif scene.get("kind") == "video":
             windows.append(scene)
         elif isinstance(scene.get("background"), dict):  # real footage behind an intro/outro card
             windows.append(dict(scene["background"], duration=scene.get("duration")))
@@ -78,6 +82,9 @@ def audit(root=ROOT):
                 errors.append(f"No video stream in source: {path.name}")
                 continue
             # Use the shorter of container and video-stream length: never count missing frames.
+            if is_still(path.name):  # genuine still image: no time window to check
+                print(f"VERIFIED STILL: {path.name} {streams[0].get('width')}x{streams[0].get('height')}")
+                continue
             duration = min(float(metadata.get("format", {}).get("duration", 0) or 0),
                            float(streams[0].get("duration", 0) or 1e9))
             start = float(scene.get("start_seconds", 0))

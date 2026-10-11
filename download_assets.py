@@ -17,23 +17,24 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
+from sources import MEDIA_TYPES, filename_ok, is_still, media_host_ok, source_host_ok
+
 ROOT = Path(__file__).resolve().parent
 HOST = "usgs-ocapsv2-public-input-media.s3.us-west-2.amazonaws.com"
 MAX_BYTES = 1024 * 1024 * 1024
 
 
 def allowed_original(item):
-    remote = urlparse(item.get("download_url", ""))
-    source = urlparse(item.get("source_page", ""))
-    if remote.scheme != "https" or remote.hostname != HOST:
-        raise ValueError(f"Only the approved USGS original host is allowed for {item.get('id')}")
-    if source.scheme != "https" or source.hostname != "www.usgs.gov":
-        raise ValueError(f"Missing official USGS source page for {item.get('id')}")
+    kind = item.get("type")
+    if kind not in MEDIA_TYPES or item.get("manual_source_review_required") is not True:
+        raise ValueError("Only genuine, labelled media requiring manual review may be downloaded")
+    if not media_host_ok(item.get("download_url", ""), kind):
+        raise ValueError(f"Only approved official media hosts are allowed for {item.get('id')}")
+    if not source_host_ok(item.get("source_page", ""), kind):
+        raise ValueError(f"Missing official source page for {item.get('id')}")
     filename = item.get("filename", "")
-    if Path(filename).name != filename or not filename.endswith(".mp4"):
+    if not filename_ok(filename):
         raise ValueError(f"Unsafe original filename: {filename}")
-    if item.get("type") != "real_video" or item.get("manual_source_review_required") is not True:
-        raise ValueError("Only genuine video requiring manual review may be downloaded")
 
 
 def compute_hash(file):
@@ -65,6 +66,13 @@ def probe_media(file):
     audio = [s for s in details.get("streams", []) if s.get("codec_type") == "audio"]
     if not video:
         raise RuntimeError("Downloaded source has no video stream")
+    if is_still(file if not str(file).endswith(".partial") else str(file)[:-8]):
+        decode = subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-v", "error", "-i", str(file),
+                                 "-f", "null", "-"], capture_output=True, text=True)
+        if decode.returncode or decode.stderr.strip():
+            raise RuntimeError("Image does not decode cleanly: " + decode.stderr.strip()[:300])
+        return {"width": video[0].get("width"), "height": video[0].get("height"),
+                "codec": video[0].get("codec_name"), "still": True}
     container = float(details.get("format", {}).get("duration", 0) or 0)
     stream = float(video[0].get("duration", 0) or 0)
     if container <= 0 or stream <= 0:
@@ -126,7 +134,7 @@ def get_one(item, root=ROOT):
         return dest
     if sidecar.exists() or provenance_path(dest).exists():
         raise RuntimeError(f"Orphan SHA256/provenance record for {dest.name}; investigate source before proceeding")
-    partial = directory / (item["filename"] + ".partial")
+    partial = directory / (item["filename"] + ".partial")  # probe_media strips .partial
     partial.unlink(missing_ok=True)
     count = 0
     sha = hashlib.sha256()
@@ -136,7 +144,7 @@ def get_one(item, root=ROOT):
         })
         with urllib.request.urlopen(request, timeout=45) as response:
             final_url = response.geturl()
-            if urlparse(final_url).hostname != HOST:
+            if not media_host_ok(final_url, item.get("type")):
                 raise RuntimeError("Download redirected outside approved official media host")
             headers = getattr(response, "headers", None) or {}
             declared = headers.get("Content-Length")
@@ -178,14 +186,16 @@ def get_one(item, root=ROOT):
         raise
 
 
-def main():
+def main(argv=None):
+    from project import take_root
+    root, argv = take_root(argv, ROOT)
     parser = argparse.ArgumentParser()
-    parser.parse_args()
-    assets = json.loads((ROOT / "assets.json").read_text(encoding="utf-8"))["assets"]
+    parser.parse_args(argv)
+    assets = json.loads((root / "assets.json").read_text(encoding="utf-8"))["assets"]
     failures = []
     for item in assets:
         try:
-            get_one(item)
+            get_one(item, root)
         except Exception as exc:
             failures.append(f"{item.get('id')}: {exc}; source page: {item.get('source_page')}")
     if failures:

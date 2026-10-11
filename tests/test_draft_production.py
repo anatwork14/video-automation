@@ -57,7 +57,7 @@ class ReviewDraft(unittest.TestCase):
         final, problems, placeholders = self.run_draft()
         self.assertEqual(problems, [])
         self.assertEqual(final, self.root / "output/GE1013_Kilauea_2018_DRAFT.mp4")
-        manifest = _rd(self.root, "output/draft_manifest.json")
+        manifest = _rd(self.root, "output/GE1013_Kilauea_2018_DRAFT.manifest.json")
         self.assertEqual(manifest["status"], "UNAPPROVED_REVIEW_DRAFT")
         self.assertEqual(manifest["timeline_file"], "timeline.proposed.json")
         self.assertEqual(len(placeholders), 1)  # group placeholder (fixture has a logo)

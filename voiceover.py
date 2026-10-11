@@ -154,11 +154,14 @@ async def run(args):
 
 
 def main(argv=None):
+    global ROOT
+    from project import take_root
+    ROOT, argv = take_root(argv, ROOT)
     parser = argparse.ArgumentParser()
     parser.add_argument("--voice", default=None, help="vi-VN-NamMinhNeural / vi-VN-HoaiMyNeural, or matching English voice")
     parser.add_argument("--rate", default="+0%", help="e.g. +0%, -5%, +8%")
     parser.add_argument("--force", action="store_true", help="Regenerate only after reviewing changed script/voice")
-    args = parser.parse_args(normalize_rate_args(sys.argv[1:] if argv is None else argv))
+    args = parser.parse_args(normalize_rate_args(argv))
     asyncio.run(run(args))
 
 

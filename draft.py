@@ -11,7 +11,7 @@
 - Missing private information (group.json) and logos are rendered as explicit
   placeholders; nothing is invented.
 
-Output: output/GE1013_Kilauea_2018_DRAFT.mp4, .srt and output/draft_manifest.json.
+Output: <root>/output/<name>.mp4, .srt and <name>.manifest.json (default name GE1013_Kilauea_2018_DRAFT).
 The approved release path is still: validate --strict -> build.py -> qa.py -> release_check.py.
 """
 import argparse
@@ -78,7 +78,8 @@ def gate(workspace, group, narration):
     return errors, evidence
 
 
-def render_review_draft(root=ROOT, timeline_file=None, no_subtitles=False, watermark=True, voice_label=True):
+def render_review_draft(root=ROOT, timeline_file=None, no_subtitles=False, watermark=True, voice_label=True,
+                        name=DRAFT_NAME):
     root = Path(root)
     if timeline_file is None:
         timeline_file = "timeline.proposed.json" if (root / "timeline.proposed.json").is_file() else "timeline.json"
@@ -92,14 +93,14 @@ def render_review_draft(root=ROOT, timeline_file=None, no_subtitles=False, water
     # disclose unless a human recorded the voice, or the owner chose to omit the on-screen label
     synthetic = mode in ("edge_tts", "manual_scene") and voice_label
     rendered = build.render_film(workspace, group, synthetic, mode, no_subtitles,
-                                 WATERMARK if watermark else None, DRAFT_NAME)
+                                 WATERMARK if watermark else None, name)
     problems = technical_problems(workspace, rendered)
     out = root / "output"
-    final = out / DRAFT_NAME
+    final = out / name
     shutil.move(str(rendered), final)
     captions = workspace / "output" / "captions.srt"
     if captions.is_file():
-        shutil.copyfile(captions, out / DRAFT_NAME.replace(".mp4", ".srt"))
+        shutil.copyfile(captions, out / name.replace(".mp4", ".srt"))
     manifest = {
         "status": "UNAPPROVED_REVIEW_DRAFT",
         "watermark": WATERMARK if watermark else None,
@@ -114,29 +115,33 @@ def render_review_draft(root=ROOT, timeline_file=None, no_subtitles=False, water
         "note": "Not approved. The team must review sources, footage windows, script and audio, "
                 "then approve + sign and render through build.py; only release_check.py may export FINAL.",
     }
-    (out / "draft_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+    (out / name.replace(".mp4", ".manifest.json")).write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
                                              encoding="utf-8")
     return final, problems, placeholders
 
 
 def main(argv=None):
+    from project import take_root
+    root, argv = take_root(argv, ROOT)
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--timeline", default=None, help="timeline file (default: timeline.proposed.json if present)")
     parser.add_argument("--no-subtitles", action="store_true")
     parser.add_argument("--no-watermark", action="store_true",
                         help="omit the on-frame watermark (the file is STILL unapproved; manifest says so)")
+    parser.add_argument("--name", default=DRAFT_NAME, help="output file name inside <root>/output")
     parser.add_argument("--no-voice-label", action="store_true",
                         help="omit the on-screen synthetic-voice label (owner's choice; disclose at upload instead)")
     args = parser.parse_args(argv)
-    final, problems, placeholders = render_review_draft(ROOT, args.timeline, args.no_subtitles,
+    final, problems, placeholders = render_review_draft(root, args.timeline, args.no_subtitles,
                                                         watermark=not args.no_watermark,
-                                                        voice_label=not args.no_voice_label)
+                                                        voice_label=not args.no_voice_label,
+                                                        name=args.name)
     for item in placeholders:
         print("PLACEHOLDER:", item)
     for problem in problems:
         print("QA FAIL:", problem, file=sys.stderr)
     note = "watermarked; do not upload" if not args.no_watermark else "no watermark at the owner's request"
-    print("REVIEW DRAFT:", final.relative_to(ROOT).as_posix(), f"(UNAPPROVED; {note})")
+    print("REVIEW DRAFT:", final.as_posix(), f"(UNAPPROVED; {note})")
     if problems:
         raise SystemExit(1)
 

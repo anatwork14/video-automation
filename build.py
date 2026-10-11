@@ -403,7 +403,7 @@ def bed_windows(segments, asset_index, assets_dir):
     beds = {}
     for i, seg in enumerate(segments):
         ref = seg if seg.get("kind") == "video" else seg.get("background")
-        if not ref or ref.get("field_audio_lufs") is None:
+        if not ref or seg.get("shots") or ref.get("field_audio_lufs") is None:
             continue
         src = assets_dir / asset_index[ref["asset_id"]]["filename"]
         beds[i] = (src, float(ref.get("start_seconds", 0)), float(ref["field_audio_lufs"]))
@@ -524,8 +524,13 @@ def render_film(root, group, synthetic_voice, audio_mode, no_subtitles=False, wa
     elif not scene_mode and not no_subtitles:
         print("RECORDED VOICE: no TTS timing available. Skipping automatic subtitles.")
         print("Add manually aligned captions in Descript; NEVER invent timestamps.")
-    visuals = [render_video(i, seg, asset_index, group, assets_dir, tmp_dir, cues.get(i, ()),
-                            disclosure if i in narrated else None, watermark)
+    if timeline.get("style") == "editorial":
+        import editorial  # TikTok-safe typography, multi-shot scenes, labelled media
+        render = editorial.render_scene
+    else:
+        render = render_video
+    visuals = [render(i, seg, asset_index, group, assets_dir, tmp_dir, cues.get(i, ()),
+                      disclosure if i in narrated else None, watermark)
                for i, seg in enumerate(segments)]
     concat = tmp_dir / "concat.txt"
     concat.write_text("".join(concat_line(p) for p in visuals), encoding="utf-8")

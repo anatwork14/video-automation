@@ -77,11 +77,12 @@ def build_score(durations, target):
 
 
 def main(argv=None):
-    argv = sys.argv[1:] if argv is None else argv
+    from project import take_root
+    root, argv = take_root(argv, ROOT)
     timeline_file = argv[0] if argv else "timeline.json"
-    timeline = json.loads((ROOT / timeline_file).read_text(encoding="utf-8"))
-    out = build_score([float(s["duration"]) for s in timeline["segments"]], ROOT / TARGET)
-    print("Original synthesized score written:", out.relative_to(ROOT).as_posix())
+    timeline = json.loads((root / timeline_file).read_text(encoding="utf-8"))
+    out = build_score([float(s["duration"]) for s in timeline["segments"]], root / TARGET)
+    print("Original synthesized score written:", out.as_posix())
 
 
 if __name__ == "__main__":

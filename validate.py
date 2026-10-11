@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 from science_gate import check_claims
 from review_gate import check_reviews, recorded_voice_path
+from sources import MEDIA_TYPES, filename_ok, media_host_ok, source_host_ok
 from review_signatures import verify_review_signatures
 
 ROOT = Path(__file__).resolve().parent
@@ -25,7 +26,10 @@ def english_problems(segments, narration, group):
     """Everything that reaches the screen or the voice must be English for an English group."""
     errors = []
     for index, scene in enumerate(segments):
-        content = str(scene.get("heading", "")) + " " + str(scene.get("caption", ""))
+        content = " ".join(str(x) for x in [
+            scene.get("heading", ""), scene.get("caption", ""), scene.get("kicker", ""),
+            *scene.get("hook_lines", []), *scene.get("credits", []),
+            *(shot.get("label", "") for shot in scene.get("shots", []) if isinstance(shot, dict))])
         if contains_vietnamese_prose(content):
             errors.append(f"English group: video scene {index} still has Vietnamese on-screen prose")
     if contains_vietnamese_prose(group.get("course", "")):
@@ -57,15 +61,13 @@ def validate(strict=False, root=ROOT):
         errors.append("Asset IDs missing or duplicated")
     for item in items:
         try:
-            host = urlparse(item["download_url"]).hostname
-            source = urlparse(item["source_page"])
-            filename = item["filename"]
-            if host != MEDIA_HOST or source.hostname != "www.usgs.gov":
-                errors.append(f"{item['id']}: URL is outside approved USGS hosts")
-            if Path(filename).name != filename or not filename.endswith(".mp4"):
+            kind = item["type"]
+            if not media_host_ok(item["download_url"], kind) or not source_host_ok(item["source_page"], kind):
+                errors.append(f"{item['id']}: URL is outside the approved official hosts (sources.py)")
+            if not filename_ok(item["filename"]):
                 errors.append(f"{item['id']}: unsafe filename")
-            if item["type"] != "real_video" or item["license_as_stated_on_source"] != "Public Domain":
-                errors.append(f"{item['id']}: source/rights not approved for this starter")
+            if kind not in MEDIA_TYPES or item["license_as_stated_on_source"] != "Public Domain":
+                errors.append(f"{item['id']}: media type/rights not approved for this project")
             for field in ("captured_date", "location", "agency_credit", "description"):
                 if not item.get(field):
                     errors.append(f"{item['id']}: missing {field}")
@@ -85,7 +87,25 @@ def validate(strict=False, root=ROOT):
     for index, seg in enumerate(segments):
         if seg.get("kind") not in ("intro", "video", "outro"):
             errors.append(f"Scene {index}: unknown kind {seg.get('kind')!r}")
-        refs = [seg] if seg.get("kind") == "video" else []
+        refs = [seg] if seg.get("kind") == "video" and not seg.get("shots") else []
+        if "shots" in seg:
+            shots = seg["shots"]
+            if not isinstance(shots, list) or not shots or not all(isinstance(x, dict) for x in shots):
+                errors.append(f"Scene {index}: shots must be a non-empty list of objects")
+                shots = []
+            for k, shot in enumerate(shots):
+                if shot.get("asset_id") not in ids:
+                    errors.append(f"Scene {index} shot {k}: unknown footage {shot.get('asset_id')!r}")
+                if not isinstance(shot.get("label"), str) or len(shot["label"].strip()) < 6:
+                    errors.append(f"Scene {index} shot {k}: label must identify place and date")
+                length = shot.get("duration")
+                if isinstance(length, bool) or not isinstance(length, (int, float)) or length <= 0:
+                    errors.append(f"Scene {index} shot {k}: duration must be positive")
+            if shots and abs(sum(float(x.get("duration", 0) or 0) for x in shots) - float(seg.get("duration", 0))) > 0.001:
+                errors.append(f"Scene {index}: shot durations must add up to the scene duration")
+            refs.extend(shots)
+        if seg.get("layout") == "hook" and not (isinstance(seg.get("hook_lines"), list) and seg["hook_lines"]):
+            errors.append(f"Scene {index}: hook layout needs hook_lines")
         if "background" in seg:
             if seg.get("kind") not in ("intro", "outro") or not isinstance(seg["background"], dict):
                 errors.append(f"Scene {index}: background is only allowed on intro/outro as an object")
@@ -113,7 +133,7 @@ def validate(strict=False, root=ROOT):
     except (KeyError, TypeError, ValueError):
         errors.append("Invalid timeline duration")
     for seg in segments:
-        if seg.get("kind") == "video" and seg.get("asset_id") not in ids:
+        if seg.get("kind") == "video" and not seg.get("shots") and seg.get("asset_id") not in ids:
             errors.append(f"Timeline references unknown footage: {seg.get('asset_id')}")
     scripts = {s.get("index"): s.get("text") for s in narration.get("segments", [])}
     for index, seg in enumerate(segments):
