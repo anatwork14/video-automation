@@ -1,0 +1,9 @@
+{
+  "status": "DRAFT — each claim requires a person to verify directly",
+  "claims": [
+    {"id":"fissures","scene":1,"claim":"Fissure 18 lava activity documented on 16 May 2018","reference":"https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-may-16-2018"},
+    {"id":"rift_activity","scene":2,"claim":"Lower East Rift Zone eruptive fissures began in early May 2018; magma migrated along the rift","reference":"https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse"},
+    {"id":"kapoho","scene":3,"claim":"Lava reached and entered Kapoho Bay on 4 June 2018; ocean entry is potentially hazardous","reference":"https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-june-4-2018"},
+    {"id":"summit","scene":4,"claim":"Summit collapse event footage was captured on 30 June 2018, published on 2 July","reference":"https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-july-2-2018"}
+  ]
+}
