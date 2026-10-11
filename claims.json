@@ -1,9 +1,34 @@
 {
-  "status": "DRAFT — each claim requires a person to verify directly",
+  "status": "DRAFT: sourced to original USGS pages, HUMAN REVIEW required",
   "claims": [
-    {"id":"fissures","scene":1,"claim":"Fissure 18 lava activity documented on 16 May 2018","reference":"https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-may-16-2018"},
-    {"id":"rift_activity","scene":2,"claim":"Lower East Rift Zone eruptive fissures began in early May 2018; magma migrated along the rift","reference":"https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse"},
-    {"id":"kapoho","scene":3,"claim":"Lava reached and entered Kapoho Bay on 4 June 2018; ocean entry is potentially hazardous","reference":"https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-june-4-2018"},
-    {"id":"summit","scene":4,"claim":"Summit collapse event footage was captured on 30 June 2018, published on 2 July","reference":"https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-july-2-2018"}
+    {
+      "id": "fissures",
+      "scene": 1,
+      "claim": "USGS filmed lava spattering at fissure 18 around 02:00 HST on 16 May 2018.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-may-16-2018",
+      "evidence_note": "USGS May 16 video description identifies fissure 18, ~02:00 HST and authentic field audio."
+    },
+    {
+      "id": "rift_activity",
+      "scene": 2,
+      "claim": "Lower East Rift Zone eruptive fissures began May 3; USGS video near fissure 22 was captured overnight May 22 and posted May 24.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea",
+      "media_reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-may-24-2018",
+      "evidence_note": "USGS chronology describes May 3 initial eruption and May 24 video page specifies recording May 22."
+    },
+    {
+      "id": "kapoho",
+      "scene": 3,
+      "claim": "Fissure 8 lava entered Kapoho Bay late June 3. USGS recorded the resulting ocean entry June 4 at 06:15 and 13:38.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-june-4-2018",
+      "evidence_note": "USGS notes entry by June 3 10:30 PM and its two compilation recordings on June 4."
+    },
+    {
+      "id": "summit",
+      "scene": 4,
+      "claim": "A collapse/explosion event filmed at Kīlauea summit June 30 included rockfall and a small plume; magma withdrawal reduced support at summit.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-july-2-2018",
+      "evidence_note": "USGS footage description specifies June 30 at 14:51 HST; uploaded page July 2; explains magma drainage."
+    }
   ]
 }

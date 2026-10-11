@@ -1,12 +1,58 @@
 {
-  "note": "CHỈ người thật kiểm tra và thay approved=true sau khi xem trực tiếp các trang nguồn và clip; AI KHÔNG được tự phê duyệt.",
+  "note": "Mỗi video và mỗi claim chỉ được thành viên nhóm tự đọc nguồn và tick. AI KHÔNG tự duyệt.",
   "assets": {
-    "may16_fissure18": {"approved": false, "reviewed_by": "", "reviewed_at": "", "rights_checked": false},
-    "may22_fissure22": {"approved": false, "reviewed_by": "", "reviewed_at": "", "rights_checked": false},
-    "jun04_kapoho": {"approved": false, "reviewed_by": "", "reviewed_at": "", "rights_checked": false},
-    "jun30_summit": {"approved": false, "reviewed_by": "", "reviewed_at": "", "rights_checked": false}
+    "may16_fissure18": {
+      "approved": false,
+      "reviewed_by": "",
+      "reviewed_at": "",
+      "rights_checked": false
+    },
+    "may22_fissure22": {
+      "approved": false,
+      "reviewed_by": "",
+      "reviewed_at": "",
+      "rights_checked": false
+    },
+    "jun04_kapoho": {
+      "approved": false,
+      "reviewed_by": "",
+      "reviewed_at": "",
+      "rights_checked": false
+    },
+    "jun30_summit": {
+      "approved": false,
+      "reviewed_by": "",
+      "reviewed_at": "",
+      "rights_checked": false
+    }
   },
   "script_reviewed": false,
   "course_logos_reviewed": false,
-  "english_language_reviewed": false
+  "english_language_reviewed": false,
+  "claims": {
+    "fissures": {
+      "approved": false,
+      "reviewed_by": "",
+      "reviewed_at": "",
+      "source_read": false
+    },
+    "rift_activity": {
+      "approved": false,
+      "reviewed_by": "",
+      "reviewed_at": "",
+      "source_read": false
+    },
+    "kapoho": {
+      "approved": false,
+      "reviewed_by": "",
+      "reviewed_at": "",
+      "source_read": false
+    },
+    "summit": {
+      "approved": false,
+      "reviewed_by": "",
+      "reviewed_at": "",
+      "source_read": false
+    }
+  }
 }
