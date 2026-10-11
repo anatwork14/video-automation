@@ -34,8 +34,7 @@ class RenderSmokeTest(unittest.TestCase):
                 "heading": "VERIFIED MEDIA TEST", "caption": "Smoke test only",
             }
             with patch.multiple(build, ASSETS=folder / "assets",
-                                TMP=folder / "segments", W=320, H=576,
-                                FONT_PATH=font):
+                                TMP=folder / "segments", FONT_PATH=font):
                 output = build.render_video(1, scene, {"test": item}, {})
                 self.assertTrue(output.exists())
                 self.assertGreater(output.stat().st_size, 1000)
@@ -43,7 +42,7 @@ class RenderSmokeTest(unittest.TestCase):
                     "ffprobe", "-v", "error", "-show_entries", "stream=width,height",
                     "-of", "csv=p=0", str(output)
                 ], capture_output=True, text=True, check=True)
-                self.assertIn("320,576", info.stdout)
+                self.assertIn("1080,1920", info.stdout)
 
     def test_short_source_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -53,8 +52,8 @@ class RenderSmokeTest(unittest.TestCase):
             test_input = folder / "assets" / "short.mp4"
             subprocess.run([
                 "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-                "-f", "lavfi", "-i", "color=c=blue:s=256x144:r=15",
-                "-t", ".5", "-c:v", "mpeg4", str(test_input)
+                "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=30",
+                "-t", "0.6", "-c:v", "libx264", "-pix_fmt", "yuv420p", str(test_input)
             ], capture_output=True, text=True, check=True)
             scene = {"kind": "video", "asset_id": "short", "duration": 2.0}
             item = {"filename": test_input.name, "id": "short"}
