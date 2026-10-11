@@ -75,7 +75,8 @@ def make_card(file, seg, intro, group):
         y += 58
     if intro:
         y = max(y + 90, 1110)
-        d.text((W // 2, y), "NHÓM " + str(group["group_number"]), font=font(54),
+        team_label = "GROUP " if group.get("language") == "en" else "NHÓM "
+        d.text((W // 2, y), team_label + str(group["group_number"]), font=font(54),
                anchor="mm", fill="#ffe3a1")
         y += 90
         for member in group["team_members"]:
@@ -84,8 +85,16 @@ def make_card(file, seg, intro, group):
                 y += 52
         d.text((W // 2, 1810), group["course"], font=font(38), anchor="mm", fill="#c8e2f8")
     else:
-        d.text((W // 2, 1610), "VIDEO GỐC: USGS · KHÔNG SỬ DỤNG HÌNH AI",
+        label = ("AUTHENTIC USGS FOOTAGE · NO AI-GENERATED IMAGES"
+                 if group.get("language") == "en"
+                 else "VIDEO THẬT: USGS · KHÔNG SỬ DỤNG HÌNH AI")
+        d.text((W // 2, 1610), label,
                font=font(27), anchor="mm", fill="#c8e2f8")
+        if group.get("_synthetic_voice"):
+            disclosure = ("SYNTHETIC VOICE: EDGE TTS" if group.get("language") == "en"
+                          else "GIỌNG ĐỌC TỔNG HỢP: EDGE TTS")
+            d.text((W // 2, 1710), disclosure,
+                   font=font(28), anchor="mm", fill="#ffe3a1")
     image.save(file)
 
 
@@ -184,6 +193,10 @@ def main():
     if not scene_mode:
         print("Using LEGACY global voiceover; assumes speech begins right AFTER intro (10s).")
         scene_audio = {}
+    group["_synthetic_voice"] = scene_mode and all(
+        (ASSETS / "audio" / f"{i:02d}.timings.json").is_file()
+        for i in scene_indices
+    )
     segments = []
     for index, seg in enumerate(timeline["segments"]):
         visual = render_video(index, seg, asset_index, group)
@@ -196,7 +209,15 @@ def main():
                     "-map", "0:a:0", "-c", "copy", "-movflags", "+faststart", merged])
     else:
         legacy = ROOT / group.get("narration_audio_file", "assets/voiceover.wav")
-        intro_ms = round(float(timeline["segments"][0]["duration"]) * 1000)
+        intro_duration = float(timeline["segments"][0]["duration"])
+        allowable_duration = float(timeline["duration_seconds"]) - intro_duration
+        actual_duration = probe_length(legacy)
+        if actual_duration > allowable_duration + 0.05:
+            raise ValueError(
+                f"Legacy narration is {actual_duration:.2f}s, but only "
+                f"{allowable_duration:.2f}s fit after intro. Shorten it; NEVER trim speech."
+            )
+        intro_ms = round(intro_duration * 1000)
         run_ffmpeg(["-f", "concat", "-safe", "0", "-i", concat, "-i", legacy,
                     "-filter_complex",
                     f"[1:a]aresample=48000,aformat=channel_layouts=stereo,"

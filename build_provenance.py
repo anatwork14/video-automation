@@ -18,6 +18,7 @@ def inputs_for(root):
         "assets.json", "claims.json", "narration.json", "timeline.json",
         "group.json", "review.json", "assets/logos_from_assignment.png",
         "build.py", "subtitles.py", "voiceover.py", "review_gate.py",
+        "build_provenance.py", "media_audit.py", "science_gate.py", "pipeline.py",
     ]
     files += ["assets/" + item["filename"] for item in assets]
     scene_paths = ["assets/audio/" + f"{int(scene['index']):02d}.mp3" for scene in narration]
