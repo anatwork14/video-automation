@@ -1,0 +1,21 @@
+# PII / credentials / full footage / renders
+group.json
+review.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+assets/*
+!assets/.gitkeep
+output/
+*.mp4
+*.mov
+*.wav
+*.mp3
+*.sha256
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.DS_Store

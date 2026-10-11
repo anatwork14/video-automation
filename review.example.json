@@ -1,0 +1,12 @@
+{
+  "note": "CHỈ người thật kiểm tra và thay approved=true sau khi xem trực tiếp các trang nguồn và clip; AI KHÔNG được tự phê duyệt.",
+  "assets": {
+    "may16_fissure18": {"approved": false, "reviewed_by": "", "reviewed_at": "", "rights_checked": false},
+    "may22_fissure22": {"approved": false, "reviewed_by": "", "reviewed_at": "", "rights_checked": false},
+    "jun04_kapoho": {"approved": false, "reviewed_by": "", "reviewed_at": "", "rights_checked": false},
+    "jun30_summit": {"approved": false, "reviewed_by": "", "reviewed_at": "", "rights_checked": false}
+  },
+  "script_reviewed": false,
+  "course_logos_reviewed": false,
+  "english_language_reviewed": false
+}

@@ -1,0 +1,12 @@
+{
+  "group_number": "CHUA_DIEN",
+  "team_members": [
+    {"name": "HO TEN THANH VIEN 1", "student_id": "MSSV 1"},
+    {"name": "HO TEN THANH VIEN 2", "student_id": "MSSV 2"},
+    {"name": "HO TEN THANH VIEN 3", "student_id": "MSSV 3"}
+  ],
+  "course": "Khoa học Trái Đất (GE1013)",
+  "language": "vi",
+  "english_program_member": false,
+  "narration_audio_file": "assets/voiceover.wav"
+}
