@@ -7,17 +7,18 @@ Internet is required. Service availability/permissions can change.
 """
 import argparse
 import asyncio
-import hashlib
 import json
 import shutil
 import subprocess
 from pathlib import Path
 
+from review_gate import text_sha256
+
 ROOT = Path(__file__).resolve().parent
 
 
 def text_digest(text):
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return text_sha256(text)
 
 
 def select_voice(language, selected):
@@ -40,8 +41,6 @@ def probe_duration(path):
 
 
 async def synthesize_segment(index, text, duration, voice, rate, force=False):
-    import edge_tts
-
     output_dir = ROOT / "assets" / "audio"
     output_dir.mkdir(parents=True, exist_ok=True)
     media = output_dir / f"{index:02d}.mp3"
@@ -65,6 +64,8 @@ async def synthesize_segment(index, text, duration, voice, rate, force=False):
             f"Scene {index} existing manual audio has no timing metadata. "
             "Do not overwrite it: move it aside or explicitly use --force."
         )
+
+    import edge_tts  # only after the local reuse/stale checks above (no network needed for those)
 
     temp_media = media.with_suffix(".partial.mp3")
     temp_media.unlink(missing_ok=True)

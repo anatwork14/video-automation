@@ -27,7 +27,7 @@ Lệnh prepare: kiểm tra cấu trúc → tải footage USGS → trích ảnh l
 ### Chốt nguồn khoa học trước render
 Đọc `SCIENCE_AUDIT.md`, đối chiếu `claims.json` với USGS; nghe narration, xem video và kiểm tra quyền sử dụng + ngày quay.
 
-**Quy trình duyệt mới (fail-closed):** chạy `python review_hashes.py` để nhận đúng SHA256 của assets/claims/narration/audio/logos. Tự điền các digest đó vào `review.json` dựa trên `review.example.json`, kèm trích dẫn bằng chứng cụ thể, tên chính xác của một thành viên đã đăng ký, `reviewed_at` ISO8601 (ví dụ `2026-10-11T13:30:00+07:00`) và boolean `true` (không phải chuỗi `"true"`). AI không được tự tích ô phê duyệt. Mọi thay đổi tệp sẽ khiến digest cũ không hợp lệ.
+**Quy trình duyệt mới (fail-closed):** chạy `python review_hashes.py` để nhận đúng SHA256 của assets/claims/tập claim/narration/timeline/audio/logos; sau khi điền xong, mỗi người duyệt ký `review.json` bằng SSH key (xem RUNBOOK.md › Chữ ký người duyệt). Tự điền các digest đó vào `review.json` dựa trên `review.example.json`, kèm trích dẫn bằng chứng cụ thể, tên chính xác của một thành viên đã đăng ký, `reviewed_at` ISO8601 (ví dụ `2026-10-11T13:30:00+07:00`) và boolean `true` (không phải chuỗi `"true"`). AI không được tự tích ô phê duyệt. Mọi thay đổi tệp sẽ khiến digest cũ không hợp lệ.
 
 Lưu ý: các MP4 gốc phải được tải và kiểm tra trước khi chạy `review_hashes.py`; digest tự nó **không chứng minh** video/claim đúng hay giấy phép hợp lệ. AI không được tự tick và script không tự đăng.
 

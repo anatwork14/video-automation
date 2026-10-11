@@ -5,9 +5,10 @@ Never estimate word timing from text length. For recorded voice use manually
 reviewed subtitles in output/captions.srt or run --no-subtitles and edit in Descript.
 """
 import argparse
-import hashlib
 import json
 from pathlib import Path
+
+from review_gate import text_sha256
 
 ROOT = Path(__file__).resolve().parent
 
@@ -70,7 +71,7 @@ def generate(root=ROOT):
                     "or supply accurate SRT with editing tools; no fake timings."
                 )
             metadata = json.loads(data_path.read_text(encoding="utf-8"))
-            if metadata.get("text_sha256") != hashlib.sha256(scripts[index].encode("utf-8")).hexdigest():
+            if metadata.get("text_sha256") != text_sha256(scripts[index]):
                 raise ValueError(f"Scene {index} script differs from voiceover. Regenerate audio.")
             boundaries = metadata.get("boundaries") or []
             if not boundaries:

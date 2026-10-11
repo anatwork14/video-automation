@@ -1,3 +1,4 @@
 Pillow>=10,<13
 PyMuPDF>=1.24,<2
-edge-tts>=7.0,<9
+# 7.2.8 verified: Communicate(boundary="WordBoundary") returns word timings (7.0.x rejects boundary=)
+edge-tts==7.2.8

@@ -41,12 +41,30 @@ MP4 bản nháp ở `output/GE1013_Kilauea_2018_DRAFT.mp4`, xem/nghe toàn bộ 
 ## Kết quả kiểm thử
 CI không tải các video thật và chưa thử MP4 cuối; pass CI không chứng minh đủ điểm hoặc đủ quyền sử dụng. Kiểm chứng con người là lớp cuối.
 
-## Human approvals gắn chặt với nội dung (mới)
-- Sau khi có footage, audio và logo thật, chạy `python review_hashes.py`. Chỉ đọc/hiển thị expected digests, KHÔNG tự tick approved.
-- Điền `review.json` từ `review.example.json`: từng asset có `approved_manifest_sha256`, `approved_media_sha256`, `rights_evidence_excerpt`; từng claim có `approved_claim_sha256`, `source_excerpt` từ USGS.
-- `script.approved_narration_sha256`, `audio.approved_audio_digest` và `logos.approved_sha256` phải là hash đúng. Chèn tên thành viên duyệt thực tế và ngày ISO8601 có timezone.
-- Dù đã duyệt, đổi lời dẫn hay thay footage sẽ tự làm duyệt cũ mất hiệu lực. Với Edge TTS, `--no-subtitles` cũng không bỏ qua kiểm tra audio stale.
-- Đánh dấu `approved` đúng kiểu JSON boolean `true` và `rights_checked/source_read` tương ứng. Chuỗi `"false"` bị từ chối.
+## Human approvals gắn chặt với nội dung và chữ ký người duyệt
+- Sau khi có footage, audio và logo thật, chạy `python review_hashes.py`. Script chỉ hiển thị expected digests (không in tên/MSSV), KHÔNG tự tick approved.
+- Điền `review.json` từ `review.example.json`:
+  - từng asset: `approved_manifest_sha256`, `approved_media_sha256`, `rights_evidence_excerpt`;
+  - từng claim: `approved_claim_sha256`, `source_excerpt` trích từ USGS;
+  - `script.approved_narration_sha256` và `script.approved_claim_set_sha256` (tập ID/cảnh của claim; xoá hay chuyển claim sẽ làm duyệt cũ mất hiệu lực);
+  - `timeline.approved_timeline_sha256`: người duyệt đã xem thứ tự clip, `start_seconds`, `crop`, tiêu đề/chú thích trên màn hình;
+  - `logos.approved_sha256`, `audio.approved_audio_digest`, `audio.mode`, và `audio.synthetic_voice` (true/false do người duyệt khai báo; Edge TTS bắt buộc `true`).
+- `reviewed_by` phải trùng chính xác tên trong group.json, `reviewed_at` ISO8601 có timezone và không ở tương lai, `approved/rights_checked/source_read` là boolean `true`.
+- Giọng thu âm: đặt `group.json.narration_audio_file` (mặc định `assets/voiceover.wav`, phải nằm trong `assets/`). Cùng một đường dẫn được dùng cho validate, digest duyệt, render và build receipt.
+
+### Chữ ký người duyệt (bắt buộc với `validate.py --strict`)
+Digest chỉ chứng minh *nội dung nào* được duyệt; bất kỳ ai sửa được JSON đều có thể điền digest. Vì vậy mỗi người có tên trong `reviewed_by` phải ký `review.json` bằng SSH key của chính mình:
+1. Mỗi thành viên duyệt chọn một `reviewer_id` (ví dụ GitHub username, không dùng MSSV) và ghi vào `group.json.team_members[].reviewer_id`.
+2. Thêm khóa CÔNG KHAI vào `reviewers.allowed_signers` và **commit** file đó (key thay đổi phải hiện trong lịch sử git):
+   `<reviewer_id> namespaces="ge1013-review" ssh-ed25519 AAAA...`
+3. Khi `review.json` đã hoàn tất, từng người tự ký trên máy mình rồi đặt chữ ký vào `review.sigs/<reviewer_id>.sig` (thư mục bị .gitignore):
+   ```bash
+   ssh-keygen -Y sign -f ~/.ssh/id_ed25519 -n ge1013-review review.json
+   mv review.json.sig review.sigs/<reviewer_id>.sig
+   ```
+4. Sửa bất kỳ byte nào trong `review.json` sau khi ký → mọi chữ ký mất hiệu lực, phải ký lại.
+
+Giới hạn: chữ ký không chống được người đang giữ private key chưa khoá hoặc người có quyền commit khóa mới. Không bao giờ ký thay người khác; AI/automation không được ký.
 
 **Về file tải thủ công:** không dùng `download_assets.py` để chứng thực một MP4 tự đặt vào `assets/`. Nếu tệp thiếu sidecar, di chuyển tệp ấy ra ngoài và tải lại bằng script từ URL gốc USGS. Nếu nguồn không còn khả dụng, phải tìm nguồn mới có URL/rights rõ ràng và cập nhật manifest sau khi tự kiểm tra, tuyệt đối không tạo provenance giả.
 

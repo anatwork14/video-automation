@@ -1,6 +1,7 @@
 # PII / credentials / full footage / renders
 group.json
 review.json
+review.sigs/
 .env
 .env.*
 !.env.example

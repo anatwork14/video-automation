@@ -3,10 +3,12 @@
 import argparse
 import json
 import re
+import unicodedata
 from pathlib import Path
 from urllib.parse import urlparse
 from science_gate import check_claims
-from review_gate import check_reviews
+from review_gate import check_reviews, recorded_voice_path
+from review_signatures import verify_review_signatures
 
 ROOT = Path(__file__).resolve().parent
 VIETNAMESE_PROSE = re.compile(
@@ -15,7 +17,8 @@ VIETNAMESE_PROSE = re.compile(
 )
 
 def contains_vietnamese_prose(text):
-    return bool(VIETNAMESE_PROSE.search(str(text)))
+    # NFC first: decomposed (NFD) Vietnamese pasted from macOS must not bypass the gate.
+    return bool(VIETNAMESE_PROSE.search(unicodedata.normalize("NFC", str(text))))
 
 MEDIA_HOST = "usgs-ocapsv2-public-input-media.s3.us-west-2.amazonaws.com"
 
@@ -55,6 +58,14 @@ def validate(strict=False, root=ROOT):
     segments = timeline.get("segments", [])
     if not segments or segments[0].get("kind") != "intro" or segments[-1].get("kind") != "outro":
         errors.append("Timeline must begin with intro and end with outro")
+    if not any(s.get("kind") == "video" for s in segments):
+        errors.append("Timeline needs at least one genuine footage (kind=video) scene")
+    for index, seg in enumerate(segments):
+        if seg.get("kind") not in ("intro", "video", "outro"):
+            errors.append(f"Scene {index}: unknown kind {seg.get('kind')!r}")
+        start = seg.get("start_seconds", 0)
+        if isinstance(start, bool) or not isinstance(start, (int, float)) or start < 0:
+            errors.append(f"Scene {index}: start_seconds must be a non-negative number")
     try:
         duration = sum(float(s["duration"]) for s in segments)
         if abs(duration - float(timeline["duration_seconds"])) > 0.1 or not 108 <= duration <= 132:
@@ -76,13 +87,26 @@ def validate(strict=False, root=ROOT):
         group = read_json("group.json", root)
     except (OSError, ValueError):
         return errors + ["Create local group.json from group.example.json; do not commit personal data."]
+    if not isinstance(group, dict):
+        return errors + ["group.json must be a JSON object"]
     members = group.get("team_members", [])
-    if not (3 <= len(members) <= 5):
+    if not isinstance(members, list) or not (3 <= len(members) <= 5):
         errors.append("Group requires 3–5 members")
-    if not str(group.get("group_number", "")).strip() or group["group_number"] == "CHUA_DIEN":
+        members = members if isinstance(members, list) else []
+    if not str(group.get("group_number", "")).strip() or group.get("group_number") == "CHUA_DIEN":
         errors.append("Missing registered group number")
-    if any(not x.get("name") or "HO TEN" in x["name"] or not x.get("student_id") or x["student_id"].startswith("MSSV ") for x in members):
+
+    def placeholder(member):
+        if not isinstance(member, dict):
+            return True
+        name, sid = member.get("name"), member.get("student_id")
+        return (not isinstance(name, str) or not name.strip() or "HO TEN" in name
+                or not isinstance(sid, str) or not sid.strip() or sid.startswith("MSSV "))
+    if any(placeholder(x) for x in members):
         errors.append("Real group member names/MSSVs required")
+    names = [x.get("name").strip() for x in members if not placeholder(x)]
+    if len(set(names)) != len(names):
+        errors.append("Group member names must be unique (approvals are matched by name)")
     if group.get("language") not in {"vi", "en"}:
         errors.append("Group language must be vi or en")
     if group.get("english_program_member") and group.get("language") != "en":
@@ -100,20 +124,28 @@ def validate(strict=False, root=ROOT):
             if contains_vietnamese_prose(speech.get("text", "")):
                 errors.append(f"English group: voiceover scene {speech.get('index')} is still Vietnamese")
     try:
-        review = read_json("review.json", root)
+        review_bytes = (root / "review.json").read_bytes()
+        review = json.loads(review_bytes.decode("utf-8"))
     except (OSError, ValueError):
         return errors + ["Create review.json from review.example.json; human must approve sources."]
+    if not isinstance(review, dict):
+        return errors + ["review.json must be a JSON object"]
+
+    def rows(key):
+        value = review.get(key)
+        return value if isinstance(value, dict) else {}
+
+    def entry_ok(entry, flag):
+        return isinstance(entry, dict) and entry.get("approved") is True and entry.get(flag) is True
     for item in items:
-        entry = review.get("assets", {}).get(item["id"], {})
-        if not (entry.get("approved") and entry.get("rights_checked") and entry.get("reviewed_by") and entry.get("reviewed_at")):
+        if not entry_ok(rows("assets").get(item["id"]), "rights_checked"):
             errors.append(f"Human provenance/rights approval missing: {item['id']}")
         file = root / "assets" / item["filename"]
         if not file.exists() or file.stat().st_size < 2048:
             errors.append(f"Missing downloaded original: {file.name}")
-    for claim in read_json("claims.json", root)["claims"]:
-        entry = review.get("claims", {}).get(claim["id"], {})
-        if not (entry.get("approved") and entry.get("source_read")
-                and entry.get("reviewed_by") and entry.get("reviewed_at")):
+    claims = read_json("claims.json", root)["claims"]
+    for claim in claims:
+        if not entry_ok(rows("claims").get(claim["id"]), "source_read"):
             errors.append("Scientific claim lacks HUMAN approval: " + claim["id"])
     from media_audit import audit as audit_media
     errors.extend(audit_media(root))
@@ -125,11 +157,16 @@ def validate(strict=False, root=ROOT):
         errors.append("English audio/captions not reviewed")
     if not (root / "assets" / "logos_from_assignment.png").exists():
         errors.append("Missing assets/logos_from_assignment.png (run extract_logos.py)")
-    errors.extend(check_reviews(root, group, review, items, read_json("claims.json", root)["claims"], narration))
+    errors.extend(check_reviews(root, group, review, items, claims, narration, timeline))
+    errors.extend(verify_review_signatures(root, group, review_bytes, review))
     scene_audio = all((root / "assets" / "audio" / f"{n:02d}.mp3").exists() for n in scripts)
-    old_voice = root / group.get("narration_audio_file", "assets/voiceover.wav")
-    if not scene_audio and not old_voice.exists():
-        errors.append("Missing scene audio clips or complete legacy voiceover")
+    try:
+        recorded = recorded_voice_path(root, group)
+    except ValueError as exc:
+        errors.append(str(exc))
+        recorded = None
+    if not scene_audio and not (recorded and recorded.is_file()):
+        errors.append("Missing scene audio clips or complete recorded voiceover")
     return errors
 
 

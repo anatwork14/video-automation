@@ -7,7 +7,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from review_gate import sha256_file
+from review_gate import load_optional_json, recorded_voice_path, sha256_file
 
 
 def inputs_for(root):
@@ -27,7 +27,11 @@ def inputs_for(root):
         files += ["assets/audio/" + f"{int(scene['index']):02d}.timings.json"
                   for scene in narration if (root / "assets/audio" / f"{int(scene['index']):02d}.timings.json").is_file()]
     else:
-        files.append("assets/voiceover.wav")
+        group = load_optional_json(root / "group.json", {})
+        try:
+            files.append(recorded_voice_path(root, group).relative_to(root).as_posix())
+        except ValueError:
+            files.append("group.json")  # invalid path: validate.py blocks the build
     if (root / "output/captions.srt").is_file():
         files.append("output/captions.srt")
     return sorted(set(files))

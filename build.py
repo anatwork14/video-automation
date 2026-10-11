@@ -12,6 +12,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from review_gate import recorded_voice_path
 from subtitles import generate as generate_subtitles
 from validate import validate
 
@@ -208,7 +209,7 @@ def main():
         run_ffmpeg(["-f", "concat", "-safe", "0", "-i", concat, "-map", "0:v:0",
                     "-map", "0:a:0", "-c", "copy", "-movflags", "+faststart", merged])
     else:
-        legacy = ROOT / group.get("narration_audio_file", "assets/voiceover.wav")
+        legacy = recorded_voice_path(ROOT, group)
         intro_duration = float(timeline["segments"][0]["duration"])
         allowable_duration = float(timeline["duration_seconds"]) - intro_duration
         actual_duration = probe_length(legacy)

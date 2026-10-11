@@ -33,7 +33,12 @@ def check_claims(root):
                 issues.append(f"{key}: evidence link must be HTTPS on an official USGS domain")
         if not row.get("reference") or not row.get("evidence_note"):
             issues.append(f"{key}: source/evidence excerpt missing")
+    try:
+        narration = json.loads((root / "narration.json").read_text(encoding="utf-8"))["segments"]
+        narrated = {seg.get("index") for seg in narration if str(seg.get("text", "")).strip()}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        narrated = set()  # validate.py reports missing/invalid narration itself
     for index, scene in enumerate(scenes):
-        if scene.get("kind") == "video" and index not in covered:
+        if (scene.get("kind") == "video" or index in narrated) and index not in covered:
             issues.append(f"Scene {index} has no scientific evidence")
     return issues

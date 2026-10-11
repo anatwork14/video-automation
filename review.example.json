@@ -1,5 +1,5 @@
 {
-  "note": "Human review only. Use python review_hashes.py for the exact expected hashes, inspect USGS/audio/logo personally, then enter ISO8601 timestamp + registered member name. Never auto-approve.",
+  "note": "Human review only. Run python review_hashes.py for the exact expected digests, inspect USGS pages, footage, timeline (clip order/start_seconds/crop/on-screen text), audio and logos personally, then enter booleans, an ISO8601 timestamp with timezone and the exact registered member name. Finally each named reviewer signs review.json with their own SSH key (RUNBOOK.md). Never auto-approve.",
   "assets": {
     "may16_fissure18": {
       "approved": false,
@@ -111,7 +111,8 @@
     "approved": false,
     "reviewed_by": "",
     "reviewed_at": "",
-    "approved_narration_sha256": ""
+    "approved_narration_sha256": "",
+    "approved_claim_set_sha256": ""
   },
   "logos": {
     "approved": false,
@@ -122,8 +123,15 @@
   "audio": {
     "approved": false,
     "mode": "",
+    "synthetic_voice": null,
     "reviewed_by": "",
     "reviewed_at": "",
     "approved_audio_digest": ""
+  },
+  "timeline": {
+    "approved": false,
+    "reviewed_by": "",
+    "reviewed_at": "",
+    "approved_timeline_sha256": ""
   }
 }

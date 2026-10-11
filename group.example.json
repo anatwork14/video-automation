@@ -1,9 +1,21 @@
 {
   "group_number": "CHUA_DIEN",
   "team_members": [
-    {"name": "HO TEN THANH VIEN 1", "student_id": "MSSV 1"},
-    {"name": "HO TEN THANH VIEN 2", "student_id": "MSSV 2"},
-    {"name": "HO TEN THANH VIEN 3", "student_id": "MSSV 3"}
+    {
+      "name": "HO TEN THANH VIEN 1",
+      "student_id": "MSSV 1",
+      "reviewer_id": ""
+    },
+    {
+      "name": "HO TEN THANH VIEN 2",
+      "student_id": "MSSV 2",
+      "reviewer_id": ""
+    },
+    {
+      "name": "HO TEN THANH VIEN 3",
+      "student_id": "MSSV 3",
+      "reviewer_id": ""
+    }
   ],
   "course": "Khoa học Trái Đất (GE1013)",
   "language": "vi",
