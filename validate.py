@@ -2,12 +2,21 @@
 """Structural / submission-readiness gate. No web calls, no AI self-approval."""
 import argparse
 import json
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 from science_gate import check_claims
 from review_gate import check_reviews
 
 ROOT = Path(__file__).resolve().parent
+VIETNAMESE_PROSE = re.compile(
+    r"[àáạảãăằắặẳẵâầấậẩẫèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡ"
+    r"ùúụủũưừứựửữỳýỵỷỹđ]", re.IGNORECASE
+)
+
+def contains_vietnamese_prose(text):
+    return bool(VIETNAMESE_PROSE.search(str(text)))
+
 MEDIA_HOST = "usgs-ocapsv2-public-input-media.s3.us-west-2.amazonaws.com"
 
 
@@ -80,6 +89,16 @@ def validate(strict=False, root=ROOT):
         errors.append("English-program member requires English narration/video")
     if narration.get("language") != group.get("language"):
         errors.append("Narration language does not match group language")
+    if group.get("language") == "en":
+        for index, scene in enumerate(segments):
+            content = str(scene.get("heading", "")) + " " + str(scene.get("caption", ""))
+            if contains_vietnamese_prose(content):
+                errors.append(f"English group: video scene {index} still has Vietnamese on-screen prose")
+        if contains_vietnamese_prose(group.get("course", "")):
+            errors.append("English group: translate course text in group.json")
+        for speech in narration.get("segments", []):
+            if contains_vietnamese_prose(speech.get("text", "")):
+                errors.append(f"English group: voiceover scene {speech.get('index')} is still Vietnamese")
     try:
         review = read_json("review.json", root)
     except (OSError, ValueError):

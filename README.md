@@ -61,3 +61,5 @@ Không dùng giọng AI: `python pipeline.py prepare --no-tts --no-subtitles --a
 - Audio TTS sẽ được ghi chú **GIỌNG ĐỌC TỔNG HỢP: EDGE TTS** ở outro; footage vẫn bắt buộc là bản ghi thật.
 - Với giọng thu âm thủ công, renderer tự bỏ phụ đề thiếu timestamps; nếu file voiceover dài hơn thời gian từ sau intro đến cuối video, renderer sẽ dừng thay vì cắt mất câu cuối.
 - CI chạy render smoke tại 1080×1920, kiểm tra input giả được tạo bằng FFmpeg, không dùng như tư liệu cho sản phẩm chính. Cần thêm kiểm duyệt visual của bản MP4 cuối.
+
+**Nhóm chương trình tiếng Anh:** nếu trong nhóm có sinh viên hệ Tiếng Anh, phải thay toàn bộ `narration.json` và `timeline.json` sang tiếng Anh, cập nhật `group.course` và TTS giọng en-*. Strict gate chặn dấu tiếng Việt còn sót trên lời đọc/chữ hiện lên; kiểm tra tự động này không thay cho người duyệt ngôn ngữ.
