@@ -39,7 +39,7 @@ class ReviewIntegrityTests(unittest.TestCase):
                 "provider": "edge-tts", "text_sha256": hashlib.sha256("Lời cũ".encode()).hexdigest(),
                 "boundaries": [{"text": "Lời", "start_seconds": 0, "duration_seconds": 0.1}]
             }))
-            _, errors = audio_evidence(root, [{"index": 1, "text": "Lời dẫn mới"}])
+            _, errors = audio_evidence(root, {"segments": [{"index": 1, "text": "Lời dẫn mới"}]})
             self.assertTrue(any("STALE AUDIO" in problem for problem in errors))
 
 
