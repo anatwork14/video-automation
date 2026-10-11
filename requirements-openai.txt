@@ -1,0 +1,2 @@
+# Optional paid legacy provider, not used by the default pipeline
+openai>=1.40,<3

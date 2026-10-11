@@ -1,49 +1,148 @@
 #!/usr/bin/env python3
-"""Optional per-scene synthetic voiceover using OpenAI TTS (audio only, not video).
-Requires OPENAI_API_KEY, incurs API cost; listen and approve pronunciation.
+"""Generate per-scene Vietnamese/English voice with edge-tts (no paid API key).
+
+Produces authentic-footage-safe AUDIO (synthetic voice is explicitly disclosed).
+Stores word timestamps from the SAME TTS session for accurate subtitles.
+Internet is required. Service availability/permissions can change.
 """
 import argparse
+import asyncio
+import hashlib
 import json
-import os
 import shutil
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-parser = argparse.ArgumentParser()
-parser.add_argument("--voice", default="alloy")
-parser.add_argument("--force", action="store_true")
-args = parser.parse_args()
-if not os.getenv("OPENAI_API_KEY"):
-    raise SystemExit("Set OPENAI_API_KEY first, or record a real audio narration instead.")
-if not shutil.which("ffprobe"):
-    raise SystemExit("Install ffprobe")
-from openai import OpenAI
 
-timeline = json.loads((ROOT / "timeline.json").read_text(encoding="utf-8"))["segments"]
-narration = json.loads((ROOT / "narration.json").read_text(encoding="utf-8"))
-scripts = {x["index"]: x["text"] for x in narration["segments"]}
-out = ROOT / "assets" / "audio"
-out.mkdir(parents=True, exist_ok=True)
-client = OpenAI()
-for index, text in sorted(scripts.items()):
-    if not text.strip() or index >= len(timeline):
-        raise SystemExit("Invalid narration segment index or text")
-    dest = out / f"{index:02d}.mp3"
-    if dest.exists() and not args.force:
-        print("Keeping existing:", dest.name)
-    else:
-        with client.audio.speech.with_streaming_response.create(
-            model="gpt-4o-mini-tts", voice=args.voice, input=text, response_format="mp3"
-        ) as response:
-            response.stream_to_file(dest)
-        print("Generated AUDIO ONLY:", dest.name)
-    result = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
-                             "default=noprint_wrappers=1:nokey=1", str(dest)], capture_output=True, text=True)
-    if result.returncode:
-        raise SystemExit("Invalid generated audio for segment " + str(index))
-    d = float(result.stdout.strip())
-    allocated = float(timeline[index]["duration"])
-    if d > allocated - .1:
-        print(f"WARNING: scene {index} narration {d:.1f}s > allotted {allocated:.1f}s. REVISE SCRIPT; NEVER AUTO-CUT.")
-print("All generated speech must be audited by a group member. AI synthetic audio is not original human speech.")
+
+def text_digest(text):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def select_voice(language, selected):
+    if language not in ("vi", "en"):
+        raise ValueError(f"Unsupported language: {language}")
+    if selected:
+        if not selected.startswith(language + "-"):
+            raise ValueError(f"Voice {selected!r} does not match narration language {language!r}")
+        return selected
+    return "vi-VN-NamMinhNeural" if language == "vi" else "en-US-GuyNeural"
+
+
+def probe_duration(path):
+    p = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+        text=True, capture_output=True, check=True,
+    )
+    return float(p.stdout.strip())
+
+
+async def synthesize_segment(index, text, duration, voice, rate, force=False):
+    import edge_tts
+
+    output_dir = ROOT / "assets" / "audio"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    media = output_dir / f"{index:02d}.mp3"
+    metadata = output_dir / f"{index:02d}.timings.json"
+    digest = text_digest(text)
+    if media.is_file() and metadata.is_file() and not force:
+        saved = json.loads(metadata.read_text(encoding="utf-8"))
+        if (saved.get("text_sha256") == digest and saved.get("voice") == voice
+                and saved.get("rate") == rate):
+            d = probe_duration(media)
+            if d > duration - 0.3:
+                raise ValueError(f"Scene {index} narration {d:.2f}s > {duration-.3:.2f}s. Edit script.")
+            print(f"REUSE approved source text audio scene {index}: {d:.2f}s")
+            return
+        raise ValueError(
+            f"Scene {index} audio is stale: narration/voice/rate changed. "
+            "Listen/review new script, then run voiceover.py --force."
+        )
+    if media.exists() and not force:
+        raise ValueError(
+            f"Scene {index} existing manual audio has no timing metadata. "
+            "Do not overwrite it: move it aside or explicitly use --force."
+        )
+
+    temp_media = media.with_suffix(".partial.mp3")
+    temp_media.unlink(missing_ok=True)
+    boundaries = []
+    try:
+        client = edge_tts.Communicate(text=text, voice=voice, rate=rate)
+        with temp_media.open("wb") as f:
+            async for chunk in client.stream():
+                if chunk["type"] == "audio":
+                    f.write(chunk["data"])
+                elif chunk["type"] == "WordBoundary":
+                    boundaries.append({
+                        "start_seconds": round(chunk["offset"] / 10_000_000, 4),
+                        "duration_seconds": round(chunk["duration"] / 10_000_000, 4),
+                        "text": chunk["text"],
+                    })
+        if temp_media.stat().st_size < 1024:
+            raise RuntimeError("TTS produced no usable audio")
+        if not boundaries:
+            raise RuntimeError("TTS returned no WordBoundary timestamps; cannot create verified subtitle timings")
+        actual = probe_duration(temp_media)
+        if actual > duration - 0.3:
+            raise ValueError(
+                f"Scene {index} narration {actual:.2f}s is too long for "
+                f"{duration:.2f}s scene. Shorten the text; DO NOT trim speech."
+            )
+        if any(x["start_seconds"] + x["duration_seconds"] > actual + .8 for x in boundaries):
+            raise ValueError(f"Scene {index} timestamps exceed audio duration")
+        payload = {
+            "provider": "edge-tts",
+            "synthetic_voice": True,
+            "voice": voice,
+            "rate": rate,
+            "text_sha256": digest,
+            "duration_seconds": round(actual, 3),
+            "boundaries": boundaries,
+        }
+        temp_metadata = metadata.with_suffix(".partial.json")
+        temp_metadata.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        temp_media.replace(media)
+        temp_metadata.replace(metadata)
+        print(f"CREATED scene {index}: {actual:.2f}s, {len(boundaries)} synchronized words")
+    finally:
+        temp_media.unlink(missing_ok=True)
+
+
+async def run(args):
+    timeline = json.loads((ROOT / "timeline.json").read_text(encoding="utf-8"))["segments"]
+    narration = json.loads((ROOT / "narration.json").read_text(encoding="utf-8"))
+    voice = select_voice(narration["language"], args.voice)
+    if not shutil.which("ffprobe"):
+        raise SystemExit("Install FFmpeg/ffprobe before TTS")
+    if not args.rate.endswith("%"):
+        raise SystemExit("--rate must resemble +0%, -10% or +10%")
+    print("Provider: edge-tts (online, currently no API key; review service terms yourself)")
+    print("Voice:", voice, "Rate:", args.rate)
+    for item in narration["segments"]:
+        index = item["index"]
+        if not (1 <= index < len(timeline)):
+            raise ValueError(f"Invalid narration index {index}")
+        text = item["text"].strip()
+        if not text:
+            raise ValueError(f"Empty narration {index}")
+        await synthesize_segment(
+            index, text, float(timeline[index]["duration"]),
+            voice, args.rate, args.force,
+        )
+    print("Voice is SYNTHETIC; inspect pronunciation and science before publishing.")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--voice", default=None, help="vi-VN-NamMinhNeural / vi-VN-HoaiMyNeural, or matching English voice")
+    parser.add_argument("--rate", default="+0%", help="e.g. +0%, -5%, +8%")
+    parser.add_argument("--force", action="store_true", help="Regenerate only after reviewing changed script/voice")
+    args = parser.parse_args()
+    asyncio.run(run(args))
+
+
+if __name__ == "__main__":
+    main()
