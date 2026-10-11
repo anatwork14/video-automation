@@ -47,3 +47,5 @@ CI không tải các video thật và chưa thử MP4 cuối; pass CI không ch�
 - `script.approved_narration_sha256`, `audio.approved_audio_digest` và `logos.approved_sha256` phải là hash đúng. Chèn tên thành viên duyệt thực tế và ngày ISO8601 có timezone.
 - Dù đã duyệt, đổi lời dẫn hay thay footage sẽ tự làm duyệt cũ mất hiệu lực. Với Edge TTS, `--no-subtitles` cũng không bỏ qua kiểm tra audio stale.
 - Đánh dấu `approved` đúng kiểu JSON boolean `true` và `rights_checked/source_read` tương ứng. Chuỗi `"false"` bị từ chối.
+
+**Về file tải thủ công:** không dùng `download_assets.py` để chứng thực một MP4 tự đặt vào `assets/`. Nếu tệp thiếu sidecar, di chuyển tệp ấy ra ngoài và tải lại bằng script từ URL gốc USGS. Nếu nguồn không còn khả dụng, phải tìm nguồn mới có URL/rights rõ ràng và cập nhật manifest sau khi tự kiểm tra, tuyệt đối không tạo provenance giả.

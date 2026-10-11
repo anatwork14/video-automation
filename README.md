@@ -52,3 +52,5 @@ Không dùng giọng AI: `python pipeline.py prepare --no-tts --no-subtitles --a
 6. Sau khi xem/nghe và đối chiếu rubric, nhóm tự đăng và nộp link TikTok trước hạn nộp có trong PDF.
 
 Đọc tiếp [RUNBOOK.md](RUNBOOK.md), [SCIENCE_AUDIT.md](SCIENCE_AUDIT.md), [AGENTS.md](AGENTS.md).
+
+**Bảo vệ bản gốc:** `download_assets.py` từ chối MP4 thủ công không có SHA256 sidecar, thay vì tự ghi hash và tin file. Với URL gốc hoạt động, hãy chuyển file nghi vấn sang chỗ khác và chạy downloader để tự tải lại từ nguồn USGS.
