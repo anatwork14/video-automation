@@ -15,7 +15,8 @@ python pipeline.py prepare --assignment-pdf /path/to/261-KHOA-HOC-TRAI-DAT-1013-
 python pipeline.py prepare --assignment-pdf /path/to/file.pdf --voice vi-VN-HoaiMyNeural --force-tts
 ```
 Tự tải MP4 qua các URL USGS, tạo SHA256 sidecar và audio/{01..05}.mp3 + .timings.json. Tự tạo captions.srt từ TTS WordBoundary; **không có giả thời điểm âm thanh**.
-- Nếu network/source thất bại: xem source_page, tải tay đúng file, chạy lại downloader để ghi hash. Vẫn phải xem video đối chiếu.
+- Nếu network/source thất bại: chạy lại downloader. Downloader KHÔNG chứng thực file tải tay (không có provenance); nếu URL gốc không còn hoạt động, tìm nguồn mới có URL/quyền rõ ràng, cập nhật assets.json sau khi tự kiểm tra.
+- `qa.py` báo "black/frozen footage from …s": đó thường là slate/logo USGS ở đầu/cuối clip. Người duyệt chọn `start_seconds` mới trong timeline.json (rồi duyệt lại timeline); không được che bằng hình khác.
 - Nếu video source quá ngắn: `python media_audit.py` báo lỗi; tìm thêm footage thật được duyệt hoặc sửa timeline. Không tự loop/freeze/cắt bỏ lời thoại.
 - TTS phụ thuộc dịch vụ trực tuyến, có thể thay đổi/bị giới hạn; không được cam kết miễn phí lâu dài.
 - TTS tạo giọng tổng hợp. Nếu bắt buộc audio 100% người thật, thu lời qua điện thoại -> assets/voiceover.wav; dùng `--no-tts --no-subtitles` và căn phụ đề thủ công.

@@ -7,11 +7,13 @@ No network traffic occurs when imported as a Python module.
 """
 import argparse
 import hashlib
+import http.client
 import json
 import shutil
 import subprocess
 import sys
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -42,18 +44,63 @@ def compute_hash(file):
     return sha.hexdigest()
 
 
+def _rate(value):
+    try:
+        num, den = str(value).split("/")
+        return round(float(num) / float(den), 3) if float(den) else None
+    except ValueError:
+        return None
+
+
 def probe_media(file):
-    if not shutil.which("ffprobe"):
-        raise RuntimeError("ffprobe is required to inspect downloaded sources")
+    """Summarise a source and prove it is a complete, decodable video BEFORE any provenance is written."""
+    if not shutil.which("ffprobe") or not shutil.which("ffmpeg"):
+        raise RuntimeError("ffmpeg and ffprobe are required to inspect downloaded sources")
     p = subprocess.run(
         ["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(file)],
         capture_output=True, text=True, check=True,
     )
     details = json.loads(p.stdout)
-    if not any(s.get("codec_type") == "video" for s in details.get("streams", [])):
+    video = [s for s in details.get("streams", []) if s.get("codec_type") == "video"]
+    audio = [s for s in details.get("streams", []) if s.get("codec_type") == "audio"]
+    if not video:
         raise RuntimeError("Downloaded source has no video stream")
-    if float(details.get("format", {}).get("duration", 0)) <= 0:
+    container = float(details.get("format", {}).get("duration", 0) or 0)
+    stream = float(video[0].get("duration", 0) or 0)
+    if container <= 0 or stream <= 0:
         raise RuntimeError("Downloaded source has invalid duration")
+    if abs(container - stream) > 1.0:
+        raise RuntimeError(f"Container {container:.2f}s vs video stream {stream:.2f}s: truncated or damaged file")
+    decode = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-nostdin", "-v", "error", "-xerror", "-i", str(file),
+         "-map", "0:v:0", "-f", "null", "-"],
+        capture_output=True, text=True,
+    )
+    if decode.returncode or decode.stderr.strip():
+        raise RuntimeError("Video stream does not decode cleanly: " + decode.stderr.strip()[:300])
+    return {
+        "duration_seconds": round(min(container, stream), 3),
+        "width": video[0].get("width"), "height": video[0].get("height"),
+        "fps": _rate(video[0].get("avg_frame_rate")), "video_codec": video[0].get("codec_name"),
+        "audio_codec": audio[0].get("codec_name") if audio else None,
+    }
+
+
+def provenance_path(media):
+    return Path(media).with_suffix(".provenance.json")
+
+
+def check_provenance(item, dest):
+    """The provenance record must describe THIS file from THIS manifest URL."""
+    record = provenance_path(dest)
+    if not record.is_file():
+        raise RuntimeError(f"{dest.name} has no provenance record; move it aside and re-download")
+    data = json.loads(record.read_text(encoding="utf-8"))
+    if data.get("download_url") != item["download_url"] or data.get("source_page") != item["source_page"]:
+        raise RuntimeError(f"{dest.name} was downloaded from a different URL than assets.json now lists")
+    if data.get("sha256") != compute_hash(dest) or data.get("bytes") != dest.stat().st_size:
+        raise RuntimeError(f"{dest.name} differs from its provenance record")
+    return data
 
 
 def get_one(item, root=ROOT):
@@ -73,11 +120,12 @@ def get_one(item, root=ROOT):
         actual = compute_hash(dest) + "  " + dest.name
         if expected != actual:
             raise RuntimeError(f"{dest.name} differs from recorded SHA256; investigate, do NOT overwrite")
+        check_provenance(item, dest)
         probe_media(dest)
         print("Existing downloaded original verified:", dest.name)
         return dest
-    if sidecar.exists():
-        raise RuntimeError(f"Orphan SHA256 sidecar: {sidecar.name}; investigate source before proceeding")
+    if sidecar.exists() or provenance_path(dest).exists():
+        raise RuntimeError(f"Orphan SHA256/provenance record for {dest.name}; investigate source before proceeding")
     partial = directory / (item["filename"] + ".partial")
     partial.unlink(missing_ok=True)
     count = 0
@@ -87,11 +135,17 @@ def get_one(item, root=ROOT):
             "User-Agent": "GE1013-source-documentary/1.0"
         })
         with urllib.request.urlopen(request, timeout=45) as response:
-            if urlparse(response.geturl()).hostname != HOST:
+            final_url = response.geturl()
+            if urlparse(final_url).hostname != HOST:
                 raise RuntimeError("Download redirected outside approved official media host")
+            headers = getattr(response, "headers", None) or {}
+            declared = headers.get("Content-Length")
             with partial.open("wb") as output:
                 while True:
-                    chunk = response.read(256 * 1024)
+                    try:
+                        chunk = response.read(256 * 1024)
+                    except http.client.IncompleteRead as exc:
+                        raise RuntimeError(f"Truncated download after {count} bytes") from exc
                     if not chunk:
                         break
                     count += len(chunk)
@@ -99,10 +153,23 @@ def get_one(item, root=ROOT):
                         raise RuntimeError("Excessively large MP4; stop downloading")
                     sha.update(chunk)
                     output.write(chunk)
+        if declared is not None and str(declared).isdigit() and int(declared) != count:
+            raise RuntimeError(f"Truncated download: received {count} of {declared} declared bytes")
         if count < 2048:
             raise RuntimeError("Downloaded file too small to be genuine video")
-        probe_media(partial)
+        media = probe_media(partial)  # complete + decodable BEFORE any provenance is written
+        record = {
+            "id": item["id"], "source_page": item["source_page"],
+            "download_url": item["download_url"], "final_url": final_url,
+            "etag": headers.get("ETag"), "last_modified": headers.get("Last-Modified"),
+            "content_length": int(declared) if declared is not None and str(declared).isdigit() else None,
+            "bytes": count, "sha256": sha.hexdigest(),
+            "downloaded_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "media": media,
+            "note": "Transport/technical provenance only; NOT a licence or scientific approval.",
+        }
         partial.rename(dest)
+        provenance_path(dest).write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         sidecar.write_text(sha.hexdigest() + "  " + dest.name + "\n", encoding="utf-8")
         print("Downloaded official source:", dest.name, count, "bytes")
         return dest

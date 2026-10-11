@@ -2,7 +2,13 @@
 """Produce GE1013 DRAFT video from ONLY human-approved authentic USGS footage.
 
 Input: group.json, review.json, approved USGS MP4s, logo and per-scene TTS
-or legacy voiceover.wav. Output is not published or scientifically approved.
+or a recorded voiceover. Output is not published or scientifically approved.
+
+Guarantees enforced here (and re-checked by qa.py):
+- every segment has exactly round(duration*FPS) frames; no loop/freeze padding;
+- narration is only ever padded with silence, never trimmed;
+- one audio encode for the whole film (no per-segment AAC seams);
+- inputs are snapshotted before rendering and must be unchanged afterwards.
 """
 import argparse
 import json
@@ -12,27 +18,31 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from build_provenance import snapshot, write_build_receipt
 from review_gate import recorded_voice_path
 from subtitles import generate as generate_subtitles
 from validate import validate
 
 ROOT = Path(__file__).resolve().parent
-ASSETS = ROOT / "assets"
-OUT = ROOT / "output"
-TMP = OUT / "segments"
 W, H, FPS = 1080, 1920, 30
-FONT_PATH = None  # Resolved by main(); defined for test patching.
+FINAL_NAME = "GE1013_Kilauea_2018_DRAFT.mp4"
+FONT_PATH = None  # Resolved by build_draft(); defined for test patching.
 FONTS = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
     "/Library/Fonts/Arial Unicode.ttf",
+    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
     "C:/Windows/Fonts/arialbd.ttf",
 ]
+# Identical encoder settings for every segment so the concat demuxer can copy streams.
+VIDEO_ARGS = ["-c:v", "libx264", "-preset", "medium", "-crf", "21", "-pix_fmt", "yuv420p",
+              "-r", str(FPS), "-video_track_timescale", "30000"]
+AUDIO_FORMAT = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
 
 
-def run_ffmpeg(args):
-    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *[str(x) for x in args]],
-                   cwd=ROOT, check=True)
+def run_ffmpeg(args, cwd=ROOT):
+    subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error", "-y",
+                    *[str(x) for x in args]], cwd=cwd, check=True)
 
 
 def probe_length(path):
@@ -40,6 +50,30 @@ def probe_length(path):
                            "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
                           capture_output=True, text=True, check=True)
     return float(proc.stdout.strip())
+
+
+def probe_video(path):
+    proc = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                           "stream=width,height", "-of", "json", str(path)],
+                          capture_output=True, text=True, check=True)
+    stream = json.loads(proc.stdout)["streams"][0]
+    return int(stream["width"]), int(stream["height"])
+
+
+def count_frames(path):
+    proc = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_packets",
+                           "-show_entries", "stream=nb_read_packets", "-of", "csv=p=0", str(path)],
+                          capture_output=True, text=True, check=True)
+    return int(proc.stdout.strip().split(",")[0])
+
+
+def frames_for(duration):
+    return round(float(duration) * FPS)
+
+
+def concat_line(path):
+    """FFmpeg concat-demuxer quoting: wrap in '...' and escape ' as '\\''."""
+    return "file '" + str(path).replace("'", "'\\''") + "'\n"
 
 
 def font(size):
@@ -57,11 +91,11 @@ def wrap(text, count=30):
     return lines + ([line] if line else [])
 
 
-def make_card(file, seg, intro, group):
+def make_card(file, seg, intro, group, assets_dir):
     image = Image.new("RGB", (W, H), "#081b2d")
     d = ImageDraw.Draw(image)
     if intro:
-        logo = Image.open(ASSETS / "logos_from_assignment.png").convert("RGB")
+        logo = Image.open(assets_dir / "logos_from_assignment.png").convert("RGB")
         logo.thumbnail((1000, 220), Image.Resampling.LANCZOS)
         image.paste(logo, ((W - logo.width) // 2, 160))
     else:
@@ -111,60 +145,156 @@ def make_overlay(file, seg, media):
     image.save(file)
 
 
-def render_video(index, seg, asset_index, group):
+def crop_filter(seg, src):
+    crop = seg.get("crop")
+    if not crop:
+        return ""
+    width, height = probe_video(src)
+    w, h, x, y = (int(crop[k]) for k in ("w", "h", "x", "y"))
+    if w <= 0 or h <= 0 or x < 0 or y < 0 or x + w > width or y + h > height:
+        raise ValueError(f"Crop {crop} lies outside the {width}x{height} source")
+    return f"crop={w}:{h}:{x}:{y},"
+
+
+def render_video(index, seg, asset_index, group, assets_dir, tmp_dir):
     duration = float(seg["duration"])
-    base = TMP / f"{index:02d}_visual.mp4"
+    frames = frames_for(duration)
+    base = tmp_dir / f"{index:02d}_visual.mp4"
     if seg["kind"] in ("intro", "outro"):
-        still = TMP / f"{index:02d}_card.png"
-        make_card(still, seg, seg["kind"] == "intro", group)
-        run_ffmpeg(["-loop", "1", "-framerate", FPS, "-i", still, "-t", duration,
-                    "-vf", "fps=30,format=yuv420p", "-an", "-c:v", "libx264",
-                    "-preset", "medium", "-crf", "21", base])
-        return base
-    media = asset_index[seg["asset_id"]]
-    src = ASSETS / media["filename"]
-    start = float(seg.get("start_seconds", 0))
-    available = probe_length(src) - start
-    if available <= 0:
-        raise ValueError(f"No usable source frames for {media['id']}")
-    if available < duration:
-        raise ValueError(
-            f"Insufficient REAL footage for {media['id']}: only {available:.2f}s remaining, "
-            f"scene requires {duration:.2f}s. Find another verified source or revise storyboard."
-        )
-    overlay = TMP / f"{index:02d}_overlay.png"
-    make_overlay(overlay, seg, media)
-    vf = (f"[0:v]fps={FPS},scale={W}:{H}:force_original_aspect_ratio=decrease,"
-          f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,"
-          f"trim=duration={duration},"
-          "setpts=PTS-STARTPTS[bg];[bg][1:v]overlay=0:0:format=auto,"
-          "format=yuv420p[v]")
-    run_ffmpeg(["-ss", start, "-i", src, "-loop", "1", "-i", overlay,
-                "-filter_complex", vf, "-map", "[v]", "-an", "-t", duration,
-                "-r", FPS, "-c:v", "libx264", "-preset", "medium", "-crf", "21", base])
+        still = tmp_dir / f"{index:02d}_card.png"
+        make_card(still, seg, seg["kind"] == "intro", group, assets_dir)
+        run_ffmpeg(["-loop", "1", "-framerate", FPS, "-i", still, "-frames:v", frames,
+                    "-vf", "format=yuv420p", "-an", *VIDEO_ARGS, base])
+    else:
+        media = asset_index[seg["asset_id"]]
+        src = assets_dir / media["filename"]
+        start = float(seg.get("start_seconds", 0))
+        available = probe_length(src) - start
+        if available <= 0:
+            raise ValueError(f"No usable source frames for {media['id']}")
+        if available < duration:
+            raise ValueError(
+                f"Insufficient REAL footage for {media['id']}: only {available:.2f}s remaining, "
+                f"scene requires {duration:.2f}s. Find another verified source or revise storyboard."
+            )
+        overlay = tmp_dir / f"{index:02d}_overlay.png"
+        make_overlay(overlay, seg, media)
+        vf = (f"[0:v]{crop_filter(seg, src)}fps={FPS},"
+              f"scale={W}:{H}:force_original_aspect_ratio=decrease,"
+              f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,"
+              f"trim=end_frame={frames},setpts=PTS-STARTPTS[bg];"
+              "[bg][1:v]overlay=0:0:shortest=1:format=auto,format=yuv420p[v]")
+        run_ffmpeg(["-ss", start, "-i", src, "-loop", "1", "-i", overlay,
+                    "-filter_complex", vf, "-map", "[v]", "-an", "-frames:v", frames, *VIDEO_ARGS, base])
+    rendered = count_frames(base)
+    if rendered != frames:
+        raise ValueError(f"Scene {index}: rendered {rendered} frames, expected {frames}. "
+                         "Refusing to pad, loop or freeze footage.")
     return base
 
 
-def attach_audio(index, visual, duration, selected_audio):
-    result = TMP / f"{index:02d}.mp4"
-    audio = selected_audio.get(index)
-    if audio:
-        d = probe_length(audio)
-        if d > duration + .05:
-            raise ValueError(f"Scene {index}: narration {d:.1f}s exceeds {duration:.1f}s. "
-                             "Shorten narration or extend segment; never silently trim speech.")
-        run_ffmpeg(["-i", visual, "-i", audio, "-filter_complex",
-                    f"[1:a]aresample=48000,aformat=channel_layouts=stereo,"
-                    f"apad,atrim=duration={duration}[a]",
-                    "-map", "0:v:0", "-map", "[a]", "-c:v", "copy",
-                    "-c:a", "aac", "-ar", "48000", "-ac", "2",
-                    "-b:a", "160k", "-t", duration, result])
+def check_narration_fits(index, audio, duration):
+    d = probe_length(audio)
+    if d > duration:
+        raise ValueError(f"Scene {index}: narration {d:.2f}s exceeds {duration:.2f}s. "
+                         "Shorten narration or extend segment; never silently trim speech.")
+    return d
+
+
+def build_audio(segments, scene_audio, recorded, target, cwd=ROOT):
+    """One AAC encode for the whole film. Speech is padded with silence, never trimmed."""
+    total = sum(float(s["duration"]) for s in segments)
+    inputs, chains = [], []
+    if scene_audio:
+        for i, seg in enumerate(segments):
+            duration = float(seg["duration"])
+            k = inputs.count("-i")  # FFmpeg input index of the next input
+            if i in scene_audio:
+                check_narration_fits(i, scene_audio[i], duration)
+                inputs += ["-i", scene_audio[i]]
+                chains.append(f"[{k}:a]{AUDIO_FORMAT},apad=whole_dur={duration}[a{i}]")
+            else:
+                inputs += ["-f", "lavfi", "-t", duration, "-i", "anullsrc=r=48000:cl=stereo"]
+                chains.append(f"[{k}:a]{AUDIO_FORMAT}[a{i}]")
+        chains.append("".join(f"[a{i}]" for i in range(len(segments)))
+                      + f"concat=n={len(segments)}:v=0:a=1[a]")
     else:
-        run_ffmpeg(["-i", visual, "-f", "lavfi", "-t", duration,
-                    "-i", "anullsrc=r=48000:cl=stereo", "-map", "0:v:0",
-                    "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac",
-                    "-b:a", "160k", "-t", duration, result])
-    return result
+        intro = float(segments[0]["duration"])
+        speech = probe_length(recorded)
+        if speech > total - intro:
+            raise ValueError(f"Recorded narration is {speech:.2f}s, but only {total - intro:.2f}s fit "
+                             "after the intro. Shorten it; NEVER trim speech.")
+        inputs += ["-i", recorded]
+        chains.append(f"[0:a]{AUDIO_FORMAT},adelay={round(intro * 1000)}:all=1,apad=whole_dur={total}[a]")
+    run_ffmpeg([*inputs, "-filter_complex", ";".join(chains), "-map", "[a]",
+                "-c:a", "aac", "-b:a", "160k", "-ar", "48000", target], cwd=cwd)
+    produced = probe_length(target)
+    if produced < total - 0.05:
+        raise ValueError(f"Audio track is {produced:.2f}s, expected {total:.2f}s")
+    return target
+
+
+def build_draft(root=ROOT, no_subtitles=False):
+    global FONT_PATH
+    root = Path(root)
+    failures = validate(strict=True, root=root)
+    if failures:
+        for issue in failures:
+            print("STOP:", issue)
+        raise SystemExit(1)
+    if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
+        raise SystemExit("Install ffmpeg and ffprobe first")
+    FONT_PATH = FONT_PATH or next((p for p in FONTS if Path(p).exists()), None)
+    if not FONT_PATH:
+        raise SystemExit("Unicode bold font missing. Install DejaVu Sans.")
+    before = snapshot(root)
+    assets_dir, out_dir = root / "assets", root / "output"
+    tmp_dir = out_dir / "segments"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    group = json.loads((root / "group.json").read_text(encoding="utf-8"))
+    review = json.loads((root / "review.json").read_text(encoding="utf-8"))
+    timeline = json.loads((root / "timeline.json").read_text(encoding="utf-8"))
+    segments = timeline["segments"]
+    asset_index = {x["id"]: x for x in json.loads((root / "assets.json").read_text(encoding="utf-8"))["assets"]}
+    scene_indices = [s["index"] for s in json.loads((root / "narration.json").read_text(encoding="utf-8"))["segments"]]
+    scene_audio = {i: assets_dir / "audio" / f"{i:02d}.mp3" for i in scene_indices}
+    scene_mode = all(p.is_file() for p in scene_audio.values())
+    recorded = None
+    if not scene_mode:
+        recorded = recorded_voice_path(root, group)
+        print("RECORDED VOICE:", recorded.relative_to(root).as_posix(), "starts right AFTER the intro.")
+        scene_audio = {}
+    group["_synthetic_voice"] = review["audio"]["synthetic_voice"] is True
+    visuals = [render_video(i, seg, asset_index, group, assets_dir, tmp_dir) for i, seg in enumerate(segments)]
+    concat = tmp_dir / "concat.txt"
+    concat.write_text("".join(concat_line(p) for p in visuals), encoding="utf-8")
+    audio = build_audio(segments, scene_audio, recorded, tmp_dir / "narration.m4a", cwd=root)
+    merged = out_dir / "merged.mp4"
+    run_ffmpeg(["-f", "concat", "-safe", "0", "-i", concat, "-i", audio, "-map", "0:v:0", "-map", "1:a:0",
+                "-c", "copy", "-movflags", "+faststart", merged], cwd=root)
+    expected = sum(frames_for(s["duration"]) for s in segments)
+    if count_frames(merged) != expected:
+        raise ValueError(f"Merged video has {count_frames(merged)} frames, expected {expected}")
+    final = out_dir / FINAL_NAME
+    if no_subtitles or not scene_mode:
+        if not scene_mode and not no_subtitles:
+            print("RECORDED VOICE: no TTS timing available. Skipping automatic subtitles.")
+            print("Add manually aligned captions in Descript; NEVER invent timestamps.")
+        shutil.copyfile(merged, final)
+    else:
+        captions = generate_subtitles(root)
+        print("Subtitle cues use original TTS word timings; review punctuation and names before release.")
+        subpath = captions.relative_to(root).as_posix()
+        run_ffmpeg(["-i", merged, "-vf",
+                    f"subtitles={subpath}:force_style='FontName=DejaVu Sans,FontSize=14,"
+                    "BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=32'",
+                    "-c:v", "libx264", "-preset", "medium", "-crf", "21",
+                    "-c:a", "copy", "-movflags", "+faststart", final], cwd=root)
+    receipt = write_build_receipt(root, final, before=before, font_path=FONT_PATH)
+    print("BUILD RECEIPT:", receipt.relative_to(root).as_posix())
+    print("CREATED DRAFT:", final.relative_to(root).as_posix())
+    print("NEXT: python qa.py; visually audit logos, dates, captions, licensing and TTS pronunciation.")
+    return final
 
 
 def main():
@@ -172,82 +302,7 @@ def main():
     parser.add_argument("--no-subtitles", action="store_true",
                         help="Skip word-synchronized TTS captions (manually align subtitles for real voiceover)")
     args = parser.parse_args()
-    failures = validate(strict=True)
-    if failures:
-        for issue in failures:
-            print("STOP:", issue)
-        raise SystemExit(1)
-    if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
-        raise SystemExit("Install ffmpeg and ffprobe first")
-    global FONT_PATH
-    FONT_PATH = next((p for p in FONTS if Path(p).exists()), None)
-    if not FONT_PATH:
-        raise SystemExit("Unicode bold font missing. Install DejaVu Sans.")
-    OUT.mkdir(exist_ok=True)
-    TMP.mkdir(exist_ok=True)
-    group = json.loads((ROOT / "group.json").read_text(encoding="utf-8"))
-    timeline = json.loads((ROOT / "timeline.json").read_text(encoding="utf-8"))
-    asset_index = {x["id"]: x for x in json.loads((ROOT / "assets.json").read_text(encoding="utf-8"))["assets"]}
-    scene_indices = [s["index"] for s in json.loads((ROOT / "narration.json").read_text(encoding="utf-8"))["segments"]]
-    scene_audio = {i: ASSETS / "audio" / f"{i:02d}.mp3" for i in scene_indices}
-    scene_mode = all(p.is_file() for p in scene_audio.values())
-    if not scene_mode:
-        print("Using LEGACY global voiceover; assumes speech begins right AFTER intro (10s).")
-        scene_audio = {}
-    group["_synthetic_voice"] = scene_mode and all(
-        (ASSETS / "audio" / f"{i:02d}.timings.json").is_file()
-        for i in scene_indices
-    )
-    segments = []
-    for index, seg in enumerate(timeline["segments"]):
-        visual = render_video(index, seg, asset_index, group)
-        segments.append(attach_audio(index, visual, float(seg["duration"]), scene_audio))
-    concat = TMP / "concat.txt"
-    concat.write_text("".join("file " + repr(str(p)) + "\n" for p in segments), encoding="utf-8")
-    merged = OUT / "merged.mp4"
-    if scene_mode:
-        run_ffmpeg(["-f", "concat", "-safe", "0", "-i", concat, "-map", "0:v:0",
-                    "-map", "0:a:0", "-c", "copy", "-movflags", "+faststart", merged])
-    else:
-        legacy = recorded_voice_path(ROOT, group)
-        intro_duration = float(timeline["segments"][0]["duration"])
-        allowable_duration = float(timeline["duration_seconds"]) - intro_duration
-        actual_duration = probe_length(legacy)
-        if actual_duration > allowable_duration + 0.05:
-            raise ValueError(
-                f"Legacy narration is {actual_duration:.2f}s, but only "
-                f"{allowable_duration:.2f}s fit after intro. Shorten it; NEVER trim speech."
-            )
-        intro_ms = round(intro_duration * 1000)
-        run_ffmpeg(["-f", "concat", "-safe", "0", "-i", concat, "-i", legacy,
-                    "-filter_complex",
-                    f"[1:a]aresample=48000,aformat=channel_layouts=stereo,"
-                    f"adelay={intro_ms}|{intro_ms},apad,"
-                    f"atrim=duration={timeline['duration_seconds']}[a]",
-                    "-map", "0:v:0", "-map", "[a]", "-c:v", "copy",
-                    "-c:a", "aac", "-b:a", "160k", "-t",
-                    timeline["duration_seconds"], "-movflags", "+faststart", merged])
-    final = OUT / "GE1013_Kilauea_2018_DRAFT.mp4"
-    if args.no_subtitles or not scene_mode:
-        if not scene_mode and not args.no_subtitles:
-            print("RECORDED VOICE: no TTS timing available. Skipping automatic subtitles.")
-            print("Add manually aligned captions in Descript; NEVER invent timestamps.")
-        shutil.copyfile(merged, final)
-    else:
-        captions = generate_subtitles()
-        print("Subtitle cues use original TTS word timings; review punctuation and names before release.")
-        # Run FFmpeg relative to ROOT, where the SRT path has no special punctuation.
-        subpath = captions.relative_to(ROOT).as_posix()
-        run_ffmpeg(["-i", merged, "-vf",
-                    f"subtitles={subpath}:force_style='FontName=DejaVu Sans,FontSize=14,"
-                    "BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=32'",
-                    "-c:v", "libx264", "-preset", "medium", "-crf", "21",
-                    "-c:a", "copy", "-movflags", "+faststart", final])
-    from build_provenance import write_build_receipt
-    receipt = write_build_receipt(ROOT, final)
-    print("BUILD RECEIPT:", receipt)
-    print("CREATED DRAFT:", final)
-    print("NEXT: python qa.py; visually audit logos, dates, captions, licensing and TTS pronunciation.")
+    build_draft(ROOT, no_subtitles=args.no_subtitles)
 
 
 if __name__ == "__main__":

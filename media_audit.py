@@ -54,6 +54,16 @@ def audit(root=ROOT):
         try:
             if read_sha256(path) != hash_video(path):
                 errors.append(f"Source media changed since SHA256 record: {path.name}")
+            record = path.with_suffix(".provenance.json")
+            if not record.is_file():
+                errors.append(f"No provenance record for {path.name}; re-download with download_assets.py")
+            else:
+                prov = json.loads(record.read_text(encoding="utf-8"))
+                if (prov.get("download_url") != item.get("download_url")
+                        or prov.get("source_page") != item.get("source_page")):
+                    errors.append(f"{path.name}: provenance URL differs from assets.json")
+                if prov.get("sha256") != read_sha256(path) or prov.get("bytes") != path.stat().st_size:
+                    errors.append(f"{path.name}: provenance record does not match the file")
             r = subprocess.run(
                 ["ffprobe", "-v", "error", "-show_format", "-show_streams", "-of", "json", str(path)],
                 capture_output=True, text=True, check=True,
@@ -63,7 +73,9 @@ def audit(root=ROOT):
             if not streams:
                 errors.append(f"No video stream in source: {path.name}")
                 continue
-            duration = float(metadata.get("format", {}).get("duration", 0))
+            # Use the shorter of container and video-stream length: never count missing frames.
+            duration = min(float(metadata.get("format", {}).get("duration", 0) or 0),
+                           float(streams[0].get("duration", 0) or 1e9))
             start = float(scene.get("start_seconds", 0))
             required = float(scene["duration"])
             if start < 0 or duration <= 0:
@@ -76,7 +88,7 @@ def audit(root=ROOT):
             print(f"VERIFIED FILE: {path.name} {duration:.2f}s "
                   f"{streams[0].get('width')}x{streams[0].get('height')}")
         except (OSError, ValueError, subprocess.CalledProcessError) as exc:
-            errors.append(f"Media could not be validated ({path.name}): {exc}")
+            errors.append(f"Media could not be validated ({path.name}): {type(exc).__name__}")
     return errors
 
 

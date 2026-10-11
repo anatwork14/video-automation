@@ -57,9 +57,10 @@ Không dùng giọng AI: `python pipeline.py prepare --no-tts --no-subtitles --a
 
 ## Kiểm tra chất lượng & dấu vết đầu ra
 
-- `build.py` xuất `output/build_manifest.json` chứa SHA256 của MP4 và chính xác các file đầu vào (bao gồm source USGS, lời thoại, hash duyệt, logo và code render). `qa.py` sẽ báo lỗi nếu MP4 cũ không còn khớp với source/script hiện tại.
-- Audio TTS sẽ được ghi chú **GIỌNG ĐỌC TỔNG HỢP: EDGE TTS** ở outro; footage vẫn bắt buộc là bản ghi thật.
-- Với giọng thu âm thủ công, renderer tự bỏ phụ đề thiếu timestamps; nếu file voiceover dài hơn thời gian từ sau intro đến cuối video, renderer sẽ dừng thay vì cắt mất câu cuối.
-- CI chạy render smoke tại 1080×1920, kiểm tra input giả được tạo bằng FFmpeg, không dùng như tư liệu cho sản phẩm chính. Cần thêm kiểm duyệt visual của bản MP4 cuối.
+- `download_assets.py` chỉ ghi `.sha256` + `.provenance.json` (URL gốc, URL cuối, ETag/Last-Modified, số byte, SHA256, thời lượng/kích thước/codec) **sau khi** đối chiếu Content-Length và giải mã toàn bộ luồng video thành công. Tải thiếu byte hay file hỏng bị xoá, không được ghi provenance.
+- `build.py` dựng từng cảnh đúng `duration × 30` khung hình và kiểm tra lại; không loop/freeze/đệm hình. Âm thanh được ghép thành MỘT track: lời đọc chỉ được đệm im lặng, không bao giờ bị cắt. `crop` (tùy chọn, trong `timeline.json`) chỉ dùng khi người duyệt timeline đồng ý.
+- `output/build_manifest.json` lưu SHA256 MP4, toàn bộ input (footage + provenance, lời thoại, review + chữ ký, logo, mọi file `.py`) và phiên bản ffmpeg/ffprobe/Python/Pillow/font. Input đổi trong lúc render → dừng.
+- `qa.py` (fail-closed): thiếu ffmpeg/không đo được âm lượng = lỗi; 1080×1920 @30 fps; độ dài = timeline; lời đọc từng cảnh nghe được (đỉnh ≥ −20 dB, trung bình ≥ −40 dB); clipping 0 dBFS; **khung đen / đứng hình trong vùng footage** (thường là slate/logo USGS ở đầu clip → chọn `start_seconds` khác).
+- Receipt chứng minh tính toàn vẹn, không chứng minh danh tính: ai chạy được build.py đều ghi được receipt. Duyệt cuối vẫn là người xem/nghe MP4.
 
 **Nhóm chương trình tiếng Anh:** nếu trong nhóm có sinh viên hệ Tiếng Anh, phải thay toàn bộ `narration.json` và `timeline.json` sang tiếng Anh, cập nhật `group.course` và TTS giọng en-*. Strict gate chặn dấu tiếng Việt còn sót trên lời đọc/chữ hiện lên; kiểm tra tự động này không thay cho người duyệt ngôn ngữ.

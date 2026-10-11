@@ -42,7 +42,8 @@ import validate as validate_mod  # noqa: E402
 import voiceover  # noqa: E402
 
 from fixture_project import (  # noqa: E402  shared synthetic, signed fixture
-    DEFAULT_TIMELINE, _asset, _rd, _w, add_tts_audio, make_project, write_review,
+    DEFAULT_TIMELINE, _asset, _rd, _w, add_tts_audio, ffmpeg, make_project, make_renderable_project, tone,
+    write_review,
 )
 
 
@@ -621,7 +622,6 @@ class ProvenanceTests(TempProject):
         self.assertIn("assets/audio/03.timings.json", files)
         self.assertNotIn("assets/voiceover.wav", files)
 
-    @unittest.expectedFailure
     def test_N8_receipt_covers_the_gate_code_itself(self):
         """N8 (Low-Med): inputs_for hashes build/review_gate/science_gate/media_audit... but
         NOT validate.py (the strict gate), qa.py, or review_hashes.py. Weakening validate.py
@@ -629,7 +629,6 @@ class ProvenanceTests(TempProject):
         make_project(self.root)
         self.assertIn("validate.py", build_provenance.inputs_for(self.root))
 
-    @unittest.expectedFailure
     def test_N6c_receipt_with_wrong_json_shape_returns_error_list(self):
         """N6: a build_manifest.json holding a JSON list raises AttributeError (only OSError,
         ValueError, KeyError are caught)."""
@@ -637,7 +636,6 @@ class ProvenanceTests(TempProject):
         (self.root / "output/build_manifest.json").write_text("[]")
         self.assertTrue(build_provenance.verify_build_receipt(self.root, mp4))
 
-    @unittest.expectedFailure
     def test_N9_error_messages_do_not_leak_absolute_paths(self):
         """N9 (Low, PII): 'Could not verify build receipt: [Errno 2] ... <absolute path>' embeds
         the local home directory / OS username in console and CI logs."""
@@ -654,8 +652,8 @@ class ProvenanceTests(TempProject):
 class QaTests(unittest.TestCase):
     def _run(self, stderr, ffmpeg_present=True, duration=120.0):
         probe = json.dumps({"format": {"duration": str(duration)}, "streams": [
-            {"codec_type": "video", "width": 1080, "height": 1920},
-            {"codec_type": "audio", "sample_rate": "48000"}]})
+            {"codec_type": "video", "width": 1080, "height": 1920, "r_frame_rate": "30/1"},
+            {"codec_type": "audio", "sample_rate": "48000", "duration": str(duration)}]})
 
         def fake_run(cmd, **kwargs):
             if cmd[0] == "ffprobe":
@@ -665,6 +663,9 @@ class QaTests(unittest.TestCase):
         def which(name):
             return "/bin/" + name if (name == "ffprobe" or ffmpeg_present) else None
         with tempfile.TemporaryDirectory() as d:
+            _w(d, "timeline.json", DEFAULT_TIMELINE)
+            _w(d, "assets.json", {"assets": [_asset(1), _asset(2)]})
+            _w(d, "narration.json", {"language": "vi", "segments": [{"index": 1, "text": "t"}]})
             out = Path(d) / "x.mp4"
             out.write_bytes(b"x")
             with patch.object(qa, "validate", return_value=[]), \
@@ -675,7 +676,9 @@ class QaTests(unittest.TestCase):
                 return qa.run_qa(Path(d), out)
 
     def test_silent_audio_rejected(self):
-        self.assertTrue(any("quiet or silent" in e for e in self._run("max_volume: -inf dB")))
+        # Exact volumedetect output for digital silence.
+        silence = "mean_volume: -91.0 dB\nmax_volume: -91.0 dB"
+        self.assertTrue(any("not audible" in e for e in self._run(silence)))
 
     def test_normal_audio_passes(self):
         self.assertEqual(self._run("mean_volume: -25.0 dB\nmax_volume: -6.2 dB"), [])
@@ -693,19 +696,16 @@ class QaTests(unittest.TestCase):
                 errors = qa.run_qa(Path(d), out)
         self.assertIn("Stale build: input changed or missing: x", errors)
 
-    @unittest.expectedFailure
     def test_N7a_missing_ffmpeg_must_not_silently_skip_audibility(self):
         """N7a (Medium, fail-open): when ffmpeg is absent (ffprobe present) the loudness check is
         skipped without any error or warning and QA can PASS with a silent video."""
         self.assertTrue(self._run("max_volume: -inf dB", ffmpeg_present=False))
 
-    @unittest.expectedFailure
     def test_N7b_unmeasurable_peak_must_not_pass(self):
         """N7b (Medium, fail-open): if volumedetect output cannot be parsed qa.py only prints a
         WARNING and returns no error."""
         self.assertTrue(self._run("garbled output without volumedetect lines"))
 
-    @unittest.expectedFailure
     def test_N7c_peak_of_minus_47_db_is_not_audible_narration(self):
         """N7c (F7 PARTIAL, Low-Med): audibility threshold is global peak > -48 dBFS, so a nearly
         inaudible track, or one loud click in an otherwise silent video, passes. No per-scene
@@ -717,92 +717,81 @@ class QaTests(unittest.TestCase):
 # build.py with mocked FFmpeg
 # --------------------------------------------------------------------------
 class BuildMainTests(unittest.TestCase):
-    def _project(self, root, narration_audio_file=None, tts=False):
-        make_project(root)
-        g = _rd(root, "group.json")
-        if narration_audio_file:
-            g["narration_audio_file"] = narration_audio_file
-        _w(root, "group.json", g)
-        if tts:
-            add_tts_audio(root)
-        (root / "font.ttf").write_bytes(b"")
+    """Real FFmpeg (no mocked renderer). Fixture media are lavfi test signals, never footage."""
 
-    def _main(self, root, argv=(), probe=50.0, scene_mode_groups=None):
-        root = Path(root)
-        calls = {"ffmpeg": [], "subs": 0, "copy": 0, "group": []}
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        # Encoder preset only; every guard and filter graph is the production one.
+        fast = [x if x != "medium" else "ultrafast" for x in build.VIDEO_ARGS]
+        for patcher in (patch.object(build, "VIDEO_ARGS", fast),
+                        patch.object(build, "FONT_PATH", next(f for f in build.FONTS if Path(f).is_file()))):
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
-        def render_video(i, seg, idx, group):
-            calls["group"].append(dict(group))
-            return build.TMP / f"{i:02d}_visual.mp4"
-
-        def attach(i, v, d, audio):
-            return build.TMP / f"{i:02d}.mp4"
-
-        def subs(*a, **k):
-            calls["subs"] += 1
-            return root / "output/captions.srt"
-        with patch.object(build, "ROOT", root), patch.object(build, "ASSETS", root / "assets"), \
-             patch.object(build, "OUT", root / "output"), patch.object(build, "TMP", root / "output/segments"), \
-             patch.object(build, "FONTS", [str(root / "font.ttf")]), \
-             patch.object(build, "validate", return_value=[]), \
-             patch.object(build.shutil, "which", return_value="/bin/x"), \
-             patch.object(build.shutil, "copyfile", side_effect=lambda *a: calls.__setitem__("copy", calls["copy"] + 1)), \
-             patch.object(build, "render_video", side_effect=render_video), \
-             patch.object(build, "attach_audio", side_effect=attach), \
-             patch.object(build, "run_ffmpeg", side_effect=lambda a: calls["ffmpeg"].append([str(x) for x in a])), \
-             patch.object(build, "probe_length", return_value=probe), \
-             patch.object(build, "generate_subtitles", side_effect=subs), \
-             patch.object(build_provenance, "write_build_receipt", return_value=root / "output/build_manifest.json"), \
-             patch.object(sys, "argv", ["build.py", *argv]), \
-             contextlib.redirect_stdout(io.StringIO()):
-            build.main()
-        return calls
+    def _build(self, **kwargs):
+        with contextlib.redirect_stdout(io.StringIO()):
+            return build.build_draft(self.root, **kwargs)
 
     def test_F3_recorded_voice_flow_does_not_touch_subtitles(self):
-        with tempfile.TemporaryDirectory() as d:
-            root = Path(d)
-            self._project(root)
-            for argv in ((), ("--no-subtitles",)):
-                calls = self._main(root, argv)
-                self.assertEqual(calls["subs"], 0)
-                self.assertEqual(calls["copy"], 1)
-                self.assertFalse(any(g.get("_synthetic_voice") for g in calls["group"]))
+        make_renderable_project(self.root, mode="recorded", speech=(60.0,))
+        with patch.object(build, "generate_subtitles", side_effect=AssertionError("subtitles called")):
+            final = self._build()  # README flow: plain `render`, no --no-subtitles
+        self.assertTrue(final.is_file())
+        self.assertFalse((self.root / "output/captions.srt").exists())
 
     def test_F8_legacy_voiceover_longer_than_available_time_is_refused(self):
-        with tempfile.TemporaryDirectory() as d:
-            root = Path(d)
-            self._project(root)
-            with self.assertRaisesRegex(ValueError, "NEVER trim"):
-                self._main(root, probe=111.0)  # 120s total - 10s intro = 110s available
-            self._main(root, probe=110.0)
+        segments = DEFAULT_TIMELINE["segments"]  # 120 s total, 10 s intro -> 110 s available
+        tone(self.root / "long.wav", 110.5)
+        with self.assertRaisesRegex(ValueError, "NEVER trim"):
+            build.build_audio(segments, {}, self.root / "long.wav", self.root / "a.m4a", cwd=self.root)
+        self.assertFalse((self.root / "a.m4a").exists())
+        tone(self.root / "fits.wav", 109.5)
+        out = build.build_audio(segments, {}, self.root / "fits.wav", self.root / "b.m4a", cwd=self.root)
+        self.assertAlmostEqual(build.probe_length(out), 120.0, delta=0.05)
 
     def test_F8_scene_narration_longer_than_scene_is_refused(self):
-        with patch.object(build, "probe_length", return_value=12.0), \
-             patch.object(build, "run_ffmpeg") as ff:
-            with self.assertRaisesRegex(ValueError, "never silently trim"):
-                build.attach_audio(1, Path("v.mp4"), 10.0, {1: Path("a.mp3")})
-            ff.assert_not_called()
+        segments = [{"duration": 2}, {"duration": 3}]
+        tone(self.root / "s1.mp3", 3.5)
+        with self.assertRaisesRegex(ValueError, "never silently trim"):
+            build.build_audio(segments, {1: self.root / "s1.mp3"}, None, self.root / "a.m4a", cwd=self.root)
+        self.assertFalse((self.root / "a.m4a").exists())
+
+    def test_scene_audio_is_padded_never_trimmed_and_stays_in_sync(self):
+        segments = [{"duration": 2}, {"duration": 3}, {"duration": 2.5}]
+        tone(self.root / "s1.mp3", 2.0)
+        tone(self.root / "s2.mp3", 1.0)
+        out = build.build_audio(segments, {1: self.root / "s1.mp3", 2: self.root / "s2.mp3"},
+                                None, self.root / "a.m4a", cwd=self.root)
+        self.assertAlmostEqual(build.probe_length(out), 7.5, delta=0.05)
+        for start, length, audible in ((0, 1.9, False), (2.05, 1.9, True), (4.1, 0.8, False), (5.05, 0.9, True)):
+            level = qa.volume(out, start, length)
+            self.assertEqual(level["max"] > -30, audible, (start, level))
 
     def test_tts_scene_mode_flags_synthetic_voice_for_outro_label(self):
-        with tempfile.TemporaryDirectory() as d:
-            root = Path(d)
-            self._project(root, tts=True)
-            calls = self._main(root, ("--no-subtitles",))
-            self.assertTrue(all(g.get("_synthetic_voice") is True for g in calls["group"]))
+        make_renderable_project(self.root, mode="tts")
+        seen = []
+        real = build.make_card
+        with patch.object(build, "make_card", side_effect=lambda f, s, i, g, a: (seen.append(dict(g)), real(f, s, i, g, a))):
+            self._build(no_subtitles=True)
+        self.assertTrue(seen and all(g.get("_synthetic_voice") is True for g in seen))
 
-    @unittest.expectedFailure
     def test_N13_concat_list_uses_ffmpeg_quoting_even_with_apostrophe_in_path(self):
-        """N13 (Low; UNVERIFIED against real ffmpeg, none installed): concat.txt is written with
-        Python repr(); for a path containing an apostrophe repr() switches to double quotes, which
-        the ffmpeg concat demuxer does not understand (it wants file '...' with \\' escaping)."""
-        with tempfile.TemporaryDirectory(prefix="o'brien-") as d:
-            root = Path(d)
-            self._project(root)
-            self._main(root)
-            lines = (root / "output/segments/concat.txt").read_text().splitlines()
-            self.assertTrue(lines)
-            for line in lines:
-                self.assertRegex(line, r"^file '")
+        """N13 FIXED: concat.txt quoting verified by REAL ffmpeg on a path containing an apostrophe."""
+        folder = self.root / "o'brien seg"
+        folder.mkdir()
+        parts = []
+        for k in range(2):
+            ffmpeg("-f", "lavfi", "-i", "testsrc2=size=64x64:rate=30", "-frames:v", 15,
+                   *build.VIDEO_ARGS, folder / f"{k}.mp4")
+            parts.append(folder / f"{k}.mp4")
+        listing = folder / "concat.txt"
+        listing.write_text("".join(build.concat_line(x) for x in parts))
+        for line in listing.read_text().splitlines():
+            self.assertRegex(line, r"^file '")
+        ffmpeg("-f", "concat", "-safe", "0", "-i", listing, "-c", "copy", self.root / "joined.mp4")
+        self.assertEqual(build.count_frames(self.root / "joined.mp4"), 30)
 
 
 # --------------------------------------------------------------------------

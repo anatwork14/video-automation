@@ -165,3 +165,73 @@ def add_tts_audio(root, stale_scene=None):
         _w(root, f"assets/audio/{i:02d}.timings.json", {
             "provider": "edge-tts", "text_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
             "boundaries": [{"text": "w", "start_seconds": 0, "duration_seconds": 0.1}]})
+
+
+# --------------------------------------------------------------------------
+# Renderable fixture: REAL FFmpeg test patterns + tones (never real footage, never in assets/)
+# --------------------------------------------------------------------------
+RENDER_TIMELINE = {"duration_seconds": 120, "segments": [
+    {"kind": "intro", "duration": 10, "heading": "TEST PATTERN", "caption": "Synthetic fixture"},
+    {"kind": "video", "asset_id": "a1", "duration": 50, "heading": "TEST 1", "caption": "testsrc2", "start_seconds": 1},
+    {"kind": "video", "asset_id": "a2", "duration": 50, "heading": "TEST 2", "caption": "mandelbrot"},
+    {"kind": "outro", "duration": 10, "heading": "TEST", "caption": "Synthetic fixture"},
+]}
+PATTERNS = {"a1": "testsrc2=size=640x360:rate=30", "a2": "mandelbrot=size=640x360:rate=30"}
+
+
+def ffmpeg(*args):
+    subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error", "-y", *map(str, args)],
+                   check=True, capture_output=True)
+
+
+def tone(path, seconds, freq=220, volume=4.0):
+    """Sine test tone. lavfi sine defaults to amplitude 1/8 (-18 dBFS); volume=4 gives ~-6 dBFS peak."""
+    ffmpeg("-f", "lavfi", "-i", f"sine=frequency={freq}:sample_rate=48000:duration={seconds}",
+           "-af", f"volume={volume}", path)
+
+
+def _source_provenance(root, item):
+    from download_assets import probe_media
+    path = Path(root) / "assets" / item["filename"]
+    digest = review_gate.sha256_file(path)
+    path.with_suffix(".sha256").write_text(f"{digest}  {path.name}\n")
+    path.with_suffix(".provenance.json").write_text(json.dumps({
+        "id": item["id"], "source_page": item["source_page"], "download_url": item["download_url"],
+        "final_url": item["download_url"], "etag": None, "last_modified": None, "content_length": None,
+        "bytes": path.stat().st_size, "sha256": digest, "downloaded_at_utc": WHEN,
+        "media": probe_media(path), "note": "TEST FIXTURE: synthetic lavfi pattern, not footage",
+    }))
+
+
+def make_renderable_project(root, mode="tts", speech=(8.0, 8.0, 6.0), source_filters=None):
+    """Full strict-valid project whose media are real FFmpeg test signals.
+
+    source_filters: optional {asset_id: ffmpeg -vf} to inject defects (black/frozen spans).
+    """
+    from PIL import Image
+    root = Path(root)
+    make_project(root, timeline=RENDER_TIMELINE)
+    for item in _rd(root, "assets.json")["assets"]:
+        vf = (source_filters or {}).get(item["id"])
+        ffmpeg("-f", "lavfi", "-i", PATTERNS[item["id"]], "-t", 55, *(["-vf", vf] if vf else []),
+               "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+               root / "assets" / item["filename"])
+        _source_provenance(root, item)
+    Image.new("RGB", (600, 120), "#ffffff").save(root / "assets/logos_from_assignment.png")
+    (root / "assets/voiceover.wav").unlink()
+    if mode == "tts":
+        narration = _rd(root, "narration.json")
+        for seg, seconds in zip(narration["segments"], speech):
+            i = seg["index"]
+            tone(root / f"assets/audio/{i:02d}.mp3", seconds, freq=200 + 40 * i)
+            words = seg["text"].split()
+            step = seconds / len(words)
+            _w(root, f"assets/audio/{i:02d}.timings.json", {
+                "provider": "edge-tts", "synthetic_voice": True, "voice": "test", "rate": "+0%",
+                "text_sha256": review_gate.text_sha256(seg["text"]), "duration_seconds": seconds,
+                "boundaries": [{"start_seconds": round(k * step, 3), "duration_seconds": round(step * 0.8, 3),
+                                "text": w} for k, w in enumerate(words)]})
+    else:
+        tone(root / "assets/voiceover.wav", speech[0])
+    write_review(root)
+    return root
