@@ -16,6 +16,7 @@ assets = json.loads((ROOT / "assets.json").read_text(encoding="utf-8"))["assets"
 out_dir = ROOT / "assets"
 out_dir.mkdir(exist_ok=True)
 
+failures = 0
 for item in assets:
     dst = out_dir / item["filename"]
     if dst.name != item["filename"] or dst.suffix.lower() != ".mp4":
@@ -56,6 +57,10 @@ for item in assets:
             if status.returncode:
                 print("WARNING: ffprobe failed:", status.stderr, file=sys.stderr)
     except Exception as exc:
+        failures += 1
         partial.unlink(missing_ok=True)
         print("FAILED:", item["id"], str(exc), "\nManual backup source page:", item["source_page"], file=sys.stderr)
 print("NOTE: download/hash is not proof of licensing; review.json requires a real human reviewer.")
+
+if failures:
+    raise SystemExit(f"{failures} original USGS video download(s) failed. Use source_page for manual download, then retry.")
