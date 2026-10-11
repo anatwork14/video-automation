@@ -39,7 +39,7 @@ else:
             loudness = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(output),
                                        "-vn", "-af", "volumedetect", "-f", "null", "-"],
                                       capture_output=True, text=True)
-            matches = re.findall(r"max_volume:\\s*(-?(?:inf|\\d+(?:\\.\\d+)?)) dB", loudness.stderr)
+            matches = re.findall(r"max_volume:\s*(-?(?:inf|\d+(?:\.\d+)?)) dB", loudness.stderr)
             # Different FFmpeg builds may format output differently: report when measurement unavailable.
             if not matches:
                 print("WARNING: Could not measure audio peak; listen manually.")
