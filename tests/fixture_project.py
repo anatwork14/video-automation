@@ -225,7 +225,7 @@ def make_renderable_project(root, mode="tts", speech=(8.0, 8.0, 6.0), source_fil
             i = seg["index"]
             tone(root / f"assets/audio/{i:02d}.mp3", seconds, freq=200 + 40 * i)
             words = seg["text"].split()
-            step = seconds / len(words)
+            step = min(seconds / len(words), 0.4)  # realistic speech pace (~2.5 words/s)
             _w(root, f"assets/audio/{i:02d}.timings.json", {
                 "provider": "edge-tts", "synthetic_voice": True, "voice": "test", "rate": "+0%",
                 "text_sha256": review_gate.text_sha256(seg["text"]), "duration_seconds": seconds,

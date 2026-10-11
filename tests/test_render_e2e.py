@@ -43,7 +43,10 @@ class EndToEndRender(unittest.TestCase):
 
     def test_production_settings_render_passes_qa_and_detects_staleness(self):
         make_renderable_project(self.root, mode="tts")
-        final = self.render(fast=False, no_subtitles=True)
+        final = self.render(fast=False)  # production encoder settings, burned-in TTS-timed subtitles
+        srt = (self.root / "output/captions.srt").read_text(encoding="utf-8")
+        self.assertIn("00:00:10,000 --> ", srt)  # scene 1 cue starts exactly at the scene start
+        self.assertIn("Scene 1 narration text", srt)
         info = probe(final)
         video = next(s for s in info["streams"] if s["codec_type"] == "video")
         audio = next(s for s in info["streams"] if s["codec_type"] == "audio")

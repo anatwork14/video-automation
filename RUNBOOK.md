@@ -24,6 +24,7 @@ Tự tải MP4 qua các URL USGS, tạo SHA256 sidecar và audio/{01..05}.mp3 + 
 ## Kiểm tra trước render
 ```bash
 python validate.py
+python footage_report.py   # đề xuất start_seconds/crop + preview; người duyệt quyết định
 python media_audit.py
 python validate.py --strict
 python pipeline.py render

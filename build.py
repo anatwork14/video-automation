@@ -8,7 +8,11 @@ Guarantees enforced here (and re-checked by qa.py):
 - every segment has exactly round(duration*FPS) frames; no loop/freeze padding;
 - narration is only ever padded with silence, never trimmed;
 - one audio encode for the whole film (no per-segment AAC seams);
-- inputs are snapshotted before rendering and must be unchanged afterwards.
+- inputs are snapshotted before rendering and must be unchanged afterwards;
+- fixed layout bands (caption box / footage / subtitles / voice disclosure / credit),
+  text is shrunk to fit and NEVER truncated (too long -> build stops);
+- subtitles are drawn with Pillow and overlaid during each scene's single encode,
+  timed only by TTS WordBoundary events (no libass, no second re-encode).
 """
 import argparse
 import json
@@ -20,7 +24,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from build_provenance import snapshot, write_build_receipt
 from review_gate import recorded_voice_path
-from subtitles import generate as generate_subtitles
+from subtitles import generate as generate_subtitles, scene_cues
 from validate import validate
 
 ROOT = Path(__file__).resolve().parent
@@ -38,6 +42,13 @@ FONTS = [
 VIDEO_ARGS = ["-c:v", "libx264", "-preset", "medium", "-crf", "21", "-pix_fmt", "yuv420p",
               "-r", str(FPS), "-video_track_timescale", "30000"]
 AUDIO_FORMAT = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
+# Fixed, non-overlapping layout bands (pixels in the 1080x1920 frame).
+MARGIN, TEXT_WIDTH = 22, 990
+TOP_Y, TOP_MAX = 70, 380            # heading/caption box (16:9 footage starts at y=656)
+SUB_TOP, SUB_BOTTOM = 1390, 1610    # subtitles: two lines max, below 16:9 footage (ends y=1264)
+LABEL_Y = 1700                      # synthetic-voice disclosure pill
+CARD_LABEL_Y = 1772                 # authentic-footage label on intro/outro cards
+CREDIT_TOP = 1842                   # agency credit bar
 
 
 def run_ffmpeg(args, cwd=ROOT):
@@ -91,9 +102,80 @@ def wrap(text, count=30):
     return lines + ([line] if line else [])
 
 
-def make_card(file, seg, intro, group, assets_dir):
-    image = Image.new("RGB", (W, H), "#081b2d")
+def pixel_wrap(text, face, max_width):
+    lines, line = [], ""
+    for token in str(text).split():
+        candidate = (line + " " + token).strip()
+        if line and face.getlength(candidate) > max_width:
+            lines.append(line)
+            line = token
+        else:
+            line = candidate
+    return lines + ([line] if line else [])
+
+
+def fit_text(text, size, min_size, max_width, max_lines, what):
+    """Shrink until the text fits; never truncate on-screen (scientific) text silently."""
+    for current in range(size, min_size - 1, -2):
+        face = font(current)
+        lines = pixel_wrap(text, face, max_width)
+        if len(lines) <= max_lines and all(face.getlength(x) <= max_width for x in lines):
+            return face, current, lines
+    raise ValueError(f"{what} is too long for the 1080x1920 layout: {text!r}. Shorten it (and re-approve).")
+
+
+def draw_top_box(d, seg):
+    heading, hs, hl = fit_text(seg["heading"], 44, 30, TEXT_WIDTH, 2, "Scene heading")
+    caption, cs, cl = fit_text(seg["caption"], 34, 24, TEXT_WIDTH, 2, "Scene caption")
+    bottom = TOP_Y + 22 + len(hl) * round(hs * 1.25) + 10 + len(cl) * round(cs * 1.3) + 18
+    if bottom > TOP_MAX:
+        raise ValueError(f"Scene heading/caption box would cover the footage area: {seg['heading']!r}")
+    d.rounded_rectangle((MARGIN, TOP_Y, W - MARGIN, bottom), radius=24, fill=(0, 0, 0, 202))
+    y = TOP_Y + 22
+    for line in hl:
+        d.text((MARGIN + 24, y), line, font=heading, fill="white")
+        y += round(hs * 1.25)
+    y += 10
+    for line in cl:
+        d.text((MARGIN + 24, y), line, font=caption, fill="#f4eacf")
+        y += round(cs * 1.3)
+    return (MARGIN, TOP_Y, W - MARGIN, bottom)
+
+
+def draw_disclosure(d, text):
+    face, _, lines = fit_text(text, 30, 22, TEXT_WIDTH - 40, 1, "Voice disclosure")
+    width = face.getlength(lines[0])
+    box = (round(W / 2 - width / 2 - 22), LABEL_Y - 28, round(W / 2 + width / 2 + 22), LABEL_Y + 28)
+    d.rounded_rectangle(box, radius=26, fill=(0, 0, 0, 190))
+    d.text((W // 2, LABEL_Y), lines[0], font=face, anchor="mm", fill="#ffe3a1")
+    return box
+
+
+def draw_credit(d, credit):
+    face, size, lines = fit_text(credit, 26, 18, TEXT_WIDTH, 2, "Agency credit")
+    d.rectangle((0, CREDIT_TOP, W, H), fill=(0, 0, 0, 195))
+    for k, line in enumerate(lines):
+        d.text((W // 2, CREDIT_TOP + 10 + k * round(size * 1.2)), line, anchor="mt", font=face, fill="white")
+    return (0, CREDIT_TOP, W, H)
+
+
+def subtitle_image(text):
+    """Transparent strip for the subtitle band; returns (image, bbox in frame coordinates)."""
+    face, size, lines = fit_text(text, 56, 40, TEXT_WIDTH, 2, "Subtitle cue")
+    image = Image.new("RGBA", (W, SUB_BOTTOM - SUB_TOP), (0, 0, 0, 0))
     d = ImageDraw.Draw(image)
+    step = round(size * 1.22)
+    y = image.height - 8 - step * len(lines)
+    for line in lines:
+        d.text((W // 2, y), line, font=face, anchor="mt", fill="white", stroke_width=5, stroke_fill="black")
+        y += step
+    box = image.getbbox() or (0, 0, 0, 0)
+    return image, (box[0], SUB_TOP + box[1], box[2], SUB_TOP + box[3])
+
+
+def make_card(file, seg, intro, group, assets_dir, disclosure=None):
+    image = Image.new("RGB", (W, H), "#081b2d")
+    d = ImageDraw.Draw(image, "RGBA")
     if intro:
         logo = Image.open(assets_dir / "logos_from_assignment.png").convert("RGB")
         logo.thumbnail((1000, 220), Image.Resampling.LANCZOS)
@@ -108,6 +190,7 @@ def make_card(file, seg, intro, group, assets_dir):
     for line in wrap(seg["caption"], 34):
         d.text((W // 2, y), line, font=font(37), anchor="mm", fill="#cee5f7")
         y += 58
+    boxes = []
     if intro:
         y = max(y + 90, 1110)
         team_label = "GROUP " if group.get("language") == "en" else "NHÓM "
@@ -120,29 +203,27 @@ def make_card(file, seg, intro, group, assets_dir):
                 y += 52
         d.text((W // 2, 1810), group["course"], font=font(38), anchor="mm", fill="#c8e2f8")
     else:
+        if y > SUB_TOP:
+            raise ValueError(f"Card text runs into the subtitle band: {seg['heading']!r}")
         label = ("AUTHENTIC USGS FOOTAGE · NO AI-GENERATED IMAGES"
                  if group.get("language") == "en"
                  else "VIDEO THẬT: USGS · KHÔNG SỬ DỤNG HÌNH AI")
-        d.text((W // 2, 1610), label,
-               font=font(27), anchor="mm", fill="#c8e2f8")
-        if group.get("_synthetic_voice"):
-            disclosure = ("SYNTHETIC VOICE: EDGE TTS" if group.get("language") == "en"
-                          else "GIỌNG ĐỌC TỔNG HỢP: EDGE TTS")
-            d.text((W // 2, 1710), disclosure,
-                   font=font(28), anchor="mm", fill="#ffe3a1")
+        d.text((W // 2, CARD_LABEL_Y), label, font=font(27), anchor="mm", fill="#c8e2f8")
+        boxes.append(d.textbbox((W // 2, CARD_LABEL_Y), label, font=font(27), anchor="mm"))
+    if disclosure:
+        boxes.append(draw_disclosure(d, disclosure))
     image.save(file)
+    return boxes
 
 
-def make_overlay(file, seg, media):
+def make_overlay(file, seg, media, disclosure=None):
     image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(image)
-    d.rounded_rectangle((22, 85, 1058, 235), radius=24, fill=(0, 0, 0, 202))
-    d.text((46, 105), seg["heading"], font=font(32), fill="white")
-    d.text((46, 165), seg["caption"], font=font(27), fill="#f4eacf")
-    d.rectangle((0, 1842, W, H), fill=(0, 0, 0, 195))
-    for k, line in enumerate(wrap(media["agency_credit"], 66)):
-        d.text((W // 2, 1852 + 27*k), line, anchor="mt", font=font(22), fill="white")
+    boxes = [draw_top_box(d, seg), draw_credit(d, media["agency_credit"])]
+    if disclosure:
+        boxes.append(draw_disclosure(d, disclosure))
     image.save(file)
+    return boxes
 
 
 def crop_filter(seg, src):
@@ -156,15 +237,30 @@ def crop_filter(seg, src):
     return f"crop={w}:{h}:{x}:{y},"
 
 
-def render_video(index, seg, asset_index, group, assets_dir, tmp_dir):
+def cue_overlays(index, cues, tmp_dir, first_input, label):
+    """Inputs + filter chain burning each cue during its exact TTS time window."""
+    inputs, chain = [], []
+    for k, (start, end, text) in enumerate(cues):
+        png = tmp_dir / f"{index:02d}_cue{k:02d}.png"
+        subtitle_image(text)[0].save(png)
+        inputs += ["-loop", "1", "-i", png]
+        chain.append(f"[{label}{k}][{first_input + k}:v]overlay=0:{SUB_TOP}:shortest=1:format=auto:"
+                     f"enable='between(t,{start:.3f},{end:.3f})'[{label}{k + 1}]")
+    return inputs, chain, f"{label}{len(cues)}"
+
+
+def render_video(index, seg, asset_index, group, assets_dir, tmp_dir, cues=(), disclosure=None):
     duration = float(seg["duration"])
     frames = frames_for(duration)
     base = tmp_dir / f"{index:02d}_visual.mp4"
     if seg["kind"] in ("intro", "outro"):
         still = tmp_dir / f"{index:02d}_card.png"
-        make_card(still, seg, seg["kind"] == "intro", group, assets_dir)
-        run_ffmpeg(["-loop", "1", "-framerate", FPS, "-i", still, "-frames:v", frames,
-                    "-vf", "format=yuv420p", "-an", *VIDEO_ARGS, base])
+        make_card(still, seg, seg["kind"] == "intro", group, assets_dir, disclosure)
+        extra, chain, last = cue_overlays(index, cues, tmp_dir, 1, "c")
+        graph = ";".join([f"[0:v]trim=end_frame={frames},setpts=PTS-STARTPTS[c0]", *chain,
+                          f"[{last}]format=yuv420p[v]"])
+        run_ffmpeg(["-loop", "1", "-framerate", FPS, "-i", still, *extra, "-filter_complex", graph,
+                    "-map", "[v]", "-an", "-frames:v", frames, *VIDEO_ARGS, base])
     else:
         media = asset_index[seg["asset_id"]]
         src = assets_dir / media["filename"]
@@ -178,14 +274,16 @@ def render_video(index, seg, asset_index, group, assets_dir, tmp_dir):
                 f"scene requires {duration:.2f}s. Find another verified source or revise storyboard."
             )
         overlay = tmp_dir / f"{index:02d}_overlay.png"
-        make_overlay(overlay, seg, media)
-        vf = (f"[0:v]{crop_filter(seg, src)}fps={FPS},"
-              f"scale={W}:{H}:force_original_aspect_ratio=decrease,"
-              f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,"
-              f"trim=end_frame={frames},setpts=PTS-STARTPTS[bg];"
-              "[bg][1:v]overlay=0:0:shortest=1:format=auto,format=yuv420p[v]")
-        run_ffmpeg(["-ss", start, "-i", src, "-loop", "1", "-i", overlay,
-                    "-filter_complex", vf, "-map", "[v]", "-an", "-frames:v", frames, *VIDEO_ARGS, base])
+        make_overlay(overlay, seg, media, disclosure)
+        extra, chain, last = cue_overlays(index, cues, tmp_dir, 2, "s")
+        graph = ";".join([
+            f"[0:v]{crop_filter(seg, src)}fps={FPS},"
+            f"scale={W}:{H}:force_original_aspect_ratio=decrease,"
+            f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,"
+            f"trim=end_frame={frames},setpts=PTS-STARTPTS[bg]",
+            "[bg][1:v]overlay=0:0:shortest=1:format=auto[s0]", *chain, f"[{last}]format=yuv420p[v]"])
+        run_ffmpeg(["-ss", start, "-i", src, "-loop", "1", "-i", overlay, *extra,
+                    "-filter_complex", graph, "-map", "[v]", "-an", "-frames:v", frames, *VIDEO_ARGS, base])
     rendered = count_frames(base)
     if rendered != frames:
         raise ValueError(f"Scene {index}: rendered {rendered} frames, expected {frames}. "
@@ -234,6 +332,14 @@ def build_audio(segments, scene_audio, recorded, target, cwd=ROOT):
     return target
 
 
+def voice_disclosure(group, mode):
+    if not group.get("_synthetic_voice"):
+        return None
+    english = group.get("language") == "en"
+    text = "Synthetic AI voice" if english else "Giọng đọc tổng hợp (AI)"
+    return text + (" · Edge TTS" if mode == "edge_tts" else "")
+
+
 def build_draft(root=ROOT, no_subtitles=False):
     global FONT_PATH
     root = Path(root)
@@ -265,31 +371,28 @@ def build_draft(root=ROOT, no_subtitles=False):
         print("RECORDED VOICE:", recorded.relative_to(root).as_posix(), "starts right AFTER the intro.")
         scene_audio = {}
     group["_synthetic_voice"] = review["audio"]["synthetic_voice"] is True
-    visuals = [render_video(i, seg, asset_index, group, assets_dir, tmp_dir) for i, seg in enumerate(segments)]
+    disclosure = voice_disclosure(group, review["audio"].get("mode"))
+    narrated = set(scene_indices)
+    cues = {}
+    if scene_mode and not no_subtitles:
+        cues = scene_cues(root)
+        generate_subtitles(root)  # output/captions.srt sidecar for review / platform captions
+        print("Subtitle cues use original TTS word timings; review punctuation and names before release.")
+    elif not scene_mode and not no_subtitles:
+        print("RECORDED VOICE: no TTS timing available. Skipping automatic subtitles.")
+        print("Add manually aligned captions in Descript; NEVER invent timestamps.")
+    visuals = [render_video(i, seg, asset_index, group, assets_dir, tmp_dir, cues.get(i, ()),
+                            disclosure if i in narrated else None)
+               for i, seg in enumerate(segments)]
     concat = tmp_dir / "concat.txt"
     concat.write_text("".join(concat_line(p) for p in visuals), encoding="utf-8")
     audio = build_audio(segments, scene_audio, recorded, tmp_dir / "narration.m4a", cwd=root)
-    merged = out_dir / "merged.mp4"
-    run_ffmpeg(["-f", "concat", "-safe", "0", "-i", concat, "-i", audio, "-map", "0:v:0", "-map", "1:a:0",
-                "-c", "copy", "-movflags", "+faststart", merged], cwd=root)
-    expected = sum(frames_for(s["duration"]) for s in segments)
-    if count_frames(merged) != expected:
-        raise ValueError(f"Merged video has {count_frames(merged)} frames, expected {expected}")
     final = out_dir / FINAL_NAME
-    if no_subtitles or not scene_mode:
-        if not scene_mode and not no_subtitles:
-            print("RECORDED VOICE: no TTS timing available. Skipping automatic subtitles.")
-            print("Add manually aligned captions in Descript; NEVER invent timestamps.")
-        shutil.copyfile(merged, final)
-    else:
-        captions = generate_subtitles(root)
-        print("Subtitle cues use original TTS word timings; review punctuation and names before release.")
-        subpath = captions.relative_to(root).as_posix()
-        run_ffmpeg(["-i", merged, "-vf",
-                    f"subtitles={subpath}:force_style='FontName=DejaVu Sans,FontSize=14,"
-                    "BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=32'",
-                    "-c:v", "libx264", "-preset", "medium", "-crf", "21",
-                    "-c:a", "copy", "-movflags", "+faststart", final], cwd=root)
+    run_ffmpeg(["-f", "concat", "-safe", "0", "-i", concat, "-i", audio, "-map", "0:v:0", "-map", "1:a:0",
+                "-c", "copy", "-movflags", "+faststart", final], cwd=root)
+    expected = sum(frames_for(s["duration"]) for s in segments)
+    if count_frames(final) != expected:
+        raise ValueError(f"Final video has {count_frames(final)} frames, expected {expected}")
     receipt = write_build_receipt(root, final, before=before, font_path=FONT_PATH)
     print("BUILD RECEIPT:", receipt.relative_to(root).as_posix())
     print("CREATED DRAFT:", final.relative_to(root).as_posix())

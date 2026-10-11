@@ -773,9 +773,12 @@ class BuildMainTests(unittest.TestCase):
         make_renderable_project(self.root, mode="tts")
         seen = []
         real = build.make_card
-        with patch.object(build, "make_card", side_effect=lambda f, s, i, g, a: (seen.append(dict(g)), real(f, s, i, g, a))):
+        with patch.object(build, "make_card",
+                          side_effect=lambda f, s, i, g, a, d=None: (seen.append(dict(g, _disclosure=d)), real(f, s, i, g, a, d))):
             self._build(no_subtitles=True)
         self.assertTrue(seen and all(g.get("_synthetic_voice") is True for g in seen))
+        # the narrated outro card carries the disclosure; the un-narrated intro does not
+        self.assertEqual([g["_disclosure"] for g in seen], [None, "Giọng đọc tổng hợp (AI) · Edge TTS"])
 
     def test_N13_concat_list_uses_ffmpeg_quoting_even_with_apostrophe_in_path(self):
         """N13 FIXED: concat.txt quoting verified by REAL ffmpeg on a path containing an apostrophe."""

@@ -55,6 +55,13 @@ Không dùng giọng AI: `python pipeline.py prepare --no-tts --no-subtitles --a
 
 **Bảo vệ bản gốc:** `download_assets.py` từ chối MP4 thủ công không có SHA256 sidecar, thay vì tự ghi hash và tin file. Với URL gốc hoạt động, hãy chuyển file nghi vấn sang chỗ khác và chạy downloader để tự tải lại từ nguồn USGS.
 
+## Bố cục, phụ đề và công bố giọng tổng hợp
+
+- Khung 1080×1920 chia vùng cố định, không chồng nhau: hộp tiêu đề/chú thích (trên) · footage · phụ đề (y 1390–1610, tối đa 2 dòng) · nhãn giọng đọc (y≈1700) · dải credit (từ y 1842). Chữ tự thu nhỏ cho vừa; nếu vẫn quá dài, build **dừng** thay vì cắt bớt nội dung khoa học.
+- Phụ đề được vẽ bằng Pillow và chèn ngay trong lần encode của từng cảnh (không cần libass, không encode lại lần hai). Thời gian chỉ lấy từ WordBoundary của TTS; chữ hiển thị được ánh xạ về đúng câu chữ trong `narration.json` (giữ dấu câu). `output/captions.srt` là bản phụ để soát/đăng caption.
+- Khi `review.json.audio.synthetic_voice` là `true`, mọi cảnh có lời đọc hiện nhãn **"Giọng đọc tổng hợp (AI) · Edge TTS"** (tiếng Anh: "Synthetic AI voice"). Giọng thu âm người thật: người duyệt khai báo `false`.
+- `python footage_report.py` đo từng clip (khung đen/đứng hình, viền đen hai bên) và đề xuất `start_seconds`/`crop` + ảnh xem trước 1 hình/giây trong `output/previews/`. **Chỉ là đề xuất**: không sửa timeline.json, không phát hiện được chữ/logo chồng lên cảnh đang chuyển động. Người duyệt phải xem, quyết định, sửa timeline rồi duyệt lại.
+
 ## Kiểm tra chất lượng & dấu vết đầu ra
 
 - `download_assets.py` chỉ ghi `.sha256` + `.provenance.json` (URL gốc, URL cuối, ETag/Last-Modified, số byte, SHA256, thời lượng/kích thước/codec) **sau khi** đối chiếu Content-Length và giải mã toàn bộ luồng video thành công. Tải thiếu byte hay file hỏng bị xoá, không được ghi provenance.
