@@ -20,6 +20,7 @@ ASSETS = ROOT / "assets"
 OUT = ROOT / "output"
 TMP = OUT / "segments"
 W, H, FPS = 1080, 1920, 30
+FONT_PATH = None  # Resolved by main(); defined for test patching.
 FONTS = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
@@ -205,7 +206,10 @@ def main():
                     "-c:a", "aac", "-b:a", "160k", "-t",
                     timeline["duration_seconds"], "-movflags", "+faststart", merged])
     final = OUT / "GE1013_Kilauea_2018_DRAFT.mp4"
-    if args.no_subtitles:
+    if args.no_subtitles or not scene_mode:
+        if not scene_mode and not args.no_subtitles:
+            print("RECORDED VOICE: no TTS timing available. Skipping automatic subtitles.")
+            print("Add manually aligned captions in Descript; NEVER invent timestamps.")
         shutil.copyfile(merged, final)
     else:
         captions = generate_subtitles()
@@ -213,8 +217,8 @@ def main():
         # Run FFmpeg relative to ROOT, where the SRT path has no special punctuation.
         subpath = captions.relative_to(ROOT).as_posix()
         run_ffmpeg(["-i", merged, "-vf",
-                    f"subtitles={subpath}:force_style='FontName=DejaVu Sans,FontSize=20,"
-                    "BorderStyle=1,Outline=2,Shadow=1,MarginV=170'",
+                    f"subtitles={subpath}:force_style='FontName=DejaVu Sans,FontSize=14,"
+                    "BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=32'",
                     "-c:v", "libx264", "-preset", "medium", "-crf", "21",
                     "-c:a", "copy", "-movflags", "+faststart", final])
     print("CREATED DRAFT:", final)

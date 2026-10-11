@@ -9,8 +9,6 @@ from unittest.mock import patch
 import build
 
 
-@unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
-                     "FFmpeg+ffprobe are required for render smoke test")
 class RenderSmokeTest(unittest.TestCase):
     def test_verified_source_render_codec(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -25,8 +23,7 @@ class RenderSmokeTest(unittest.TestCase):
                 str(test_input),
             ], capture_output=True, text=True, check=True)
             font = next((x for x in build.FONTS if Path(x).is_file()), None)
-            if not font:
-                self.skipTest("Unicode bold font unavailable on test worker")
+            self.assertIsNotNone(font, "CI requires Unicode font to run actual renderer test")
             item = {
                 "id": "test",
                 "filename": test_input.name,

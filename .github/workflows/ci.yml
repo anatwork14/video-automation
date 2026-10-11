@@ -3,6 +3,8 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   validation:
     runs-on: ubuntu-latest
@@ -17,10 +19,14 @@ jobs:
         run: python -m compileall -q .
       - name: Check manifest / timeline structure
         run: python validate.py
-      - name: Check FFmpeg/FFprobe are installed
+      - name: Install and require real FFmpeg + fonts
         run: |
-          ffmpeg -version | head -n 1
-          ffprobe -version | head -n 1
+          sudo apt-get update -q
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          command -v ffmpeg
+          command -v ffprobe
+          ffmpeg -version >/dev/null
+          ffprobe -version >/dev/null
       - name: Unit tests
         run: python -m unittest discover -s tests -v
       - name: Security boundaries

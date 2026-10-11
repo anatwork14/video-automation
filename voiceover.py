@@ -70,7 +70,7 @@ async def synthesize_segment(index, text, duration, voice, rate, force=False):
     temp_media.unlink(missing_ok=True)
     boundaries = []
     try:
-        client = edge_tts.Communicate(text=text, voice=voice, rate=rate)
+        client = edge_tts.Communicate(text=text, voice=voice, rate=rate, boundary="WordBoundary")
         with temp_media.open("wb") as f:
             async for chunk in client.stream():
                 if chunk["type"] == "audio":
