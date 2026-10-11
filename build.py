@@ -117,12 +117,15 @@ def render_video(index, seg, asset_index, group):
     if available <= 0:
         raise ValueError(f"No usable source frames for {media['id']}")
     if available < duration:
-        print(f"WARNING: {media['id']} is {available:.1f}s after offset; its REAL last frame will be held.")
+        raise ValueError(
+            f"Insufficient REAL footage for {media['id']}: only {available:.2f}s remaining, "
+            f"scene requires {duration:.2f}s. Find another verified source or revise storyboard."
+        )
     overlay = TMP / f"{index:02d}_overlay.png"
     make_overlay(overlay, seg, media)
     vf = (f"[0:v]fps={FPS},scale={W}:{H}:force_original_aspect_ratio=decrease,"
           f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,"
-          f"tpad=stop_mode=clone:stop_duration={duration},trim=duration={duration},"
+          f"trim=duration={duration},"
           "setpts=PTS-STARTPTS[bg];[bg][1:v]overlay=0:0:format=auto,"
           "format=yuv420p[v]")
     run_ffmpeg(["-ss", start, "-i", src, "-loop", "1", "-i", overlay,
@@ -156,7 +159,7 @@ def attach_audio(index, visual, duration, selected_audio):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-subtitles", action="store_true",
-                        help="Do not burn approximate subtitles onto the MP4")
+                        help="Skip word-synchronized TTS captions (manually align subtitles for real voiceover)")
     args = parser.parse_args()
     failures = validate(strict=True)
     if failures:
@@ -206,7 +209,7 @@ def main():
         shutil.copyfile(merged, final)
     else:
         captions = generate_subtitles()
-        print("WARNING: captions are scene-timed approximations, NOT forced-aligned. Manual review required.")
+        print("Subtitle cues use original TTS word timings; review punctuation and names before release.")
         # Run FFmpeg relative to ROOT, where the SRT path has no special punctuation.
         subpath = captions.relative_to(ROOT).as_posix()
         run_ffmpeg(["-i", merged, "-vf",

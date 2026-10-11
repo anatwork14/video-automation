@@ -1,37 +1,42 @@
-# RUNBOOK — Thao tác cuối cùng cho nhóm GE1013
+# RUNBOOK — GE1013 hoàn thành phim tư liệu thật
 
-## A. Cài đặt (máy riêng hoặc ChatGPT Work/Claude Code có quyền chạy lệnh)
-1. Clone: git clone https://github.com/anatwork14/video-automation.git
-2. cd video-automation
-3. Cài FFmpeg + FFprobe (hệ thống cần nhận lệnh ffmpeg/ffprobe).
-4. python -m pip install -r requirements.txt
-5. Sao chép group.example.json → group.json và review.example.json → review.json. KHÔNG push 2 file này lên GitHub.
-6. Điền số nhóm và 3–5 thành viên; ngôn ngữ vi/en đúng theo lớp.
-7. Mở các trang gốc trong assets.json, đọc rights, tải/xem bản gốc; nhóm chỉ đánh dấu approved trong review.json sau khi đối chiếu. AI không được tự tick.
+## Chuẩn bị
+- Cài Python 3.10+, FFmpeg, ffprobe, `pip install -r requirements.txt` (gồm edge-tts).
+- Copy group.example.json -> group.json và review.example.json -> review.json (đã .gitignore). Điền đầy đủ nhưng không push.
+- Mở SCIENCE_AUDIT.md/claims.json và từng URL USGS trong assets.json, xem trang video gốc; video quay ngày khác với ngày trang được đăng.
+- Chỉ tự mình mới đánh dấu review.json: asset `approved,rights_checked,reviewed_by,reviewed_at`; claim `approved,source_read,reviewed_by,reviewed_at`; script/logos đều reviewed.
+- Trích logo từ PDF bản giảng viên: crop bằng code là minh họa ban đầu; logo trường/môn/sponsor phải có đủ và đúng.
 
-## B. Chuẩn bị 100% tự động phần kỹ thuật
-- Không cần tự quay: python pipeline.py prepare --assignment-pdf /path/to/GE1013_TIKTOK.pdf
-- Nếu CHỌN sử dụng giọng tổng hợp (có phí): thiết lập OPENAI_API_KEY trong môi trường riêng, rồi chạy python pipeline.py prepare --assignment-pdf /path/to/GE1013_TIKTOK.pdf --tts
-- Nếu KHÔNG dùng TTS: thu một tệp assets/voiceover.wav từ xa; lời đọc bắt đầu sau intro 10 giây, và phải tự canh nhịp; lựa chọn ổn định hơn là cung cấp assets/audio/01.mp3 ... 05.mp3 theo từng cảnh.
-- Nếu USGS chuyển hoặc chặn URL: mở source_page, tải đúng MP4 thực, đặt đúng filename trong assets/. Không thay bằng ảnh/video AI.
-- Logo từ PDF là hình trích thô, nhóm kiểm tra logo môn, trường và nhà tài trợ. Không coi crop tự động là đã đúng.
+## Miễn phí — tự chuẩn bị footage + giọng đọc
+```bash
+python pipeline.py prepare --assignment-pdf /path/to/261-KHOA-HOC-TRAI-DAT-1013-TIKTOK.pdf
+# Mặc định TTS trực tuyến Edge giọng nam tiếng Việt, không key.
+# Chọn giọng nữ, cần ghi đè audio khi đã nghe và đồng ý bản script mới:
+python pipeline.py prepare --assignment-pdf /path/to/file.pdf --voice vi-VN-HoaiMyNeural --force-tts
+```
+Tự tải MP4 qua các URL USGS, tạo SHA256 sidecar và audio/{01..05}.mp3 + .timings.json. Tự tạo captions.srt từ TTS WordBoundary; **không có giả thời điểm âm thanh**.
+- Nếu network/source thất bại: xem source_page, tải tay đúng file, chạy lại downloader để ghi hash. Vẫn phải xem video đối chiếu.
+- Nếu video source quá ngắn: `python media_audit.py` báo lỗi; tìm thêm footage thật được duyệt hoặc sửa timeline. Không tự loop/freeze/cắt bỏ lời thoại.
+- TTS phụ thuộc dịch vụ trực tuyến, có thể thay đổi/bị giới hạn; không được cam kết miễn phí lâu dài.
+- TTS tạo giọng tổng hợp. Nếu bắt buộc audio 100% người thật, thu lời qua điện thoại -> assets/voiceover.wav; dùng `--no-tts --no-subtitles` và căn phụ đề thủ công.
 
-## C. Render sau bước duyệt
-- python pipeline.py render
-- Thư mục output/: GE1013_Kilauea_2018_DRAFT.mp4, captions.srt, merged.mp4 và các bước trung gian.
-- Tùy chọn bỏ burn caption: python pipeline.py render --no-subtitles (sau đó nhóm thêm caption đã duyệt trong Descript).
-- Nếu thiếu phê duyệt: pipeline báo FAIL và không render. Đây là thiết kế để bảo vệ tính thật của nội dung.
+## Kiểm tra trước render
+```bash
+python validate.py
+python media_audit.py
+python validate.py --strict
+python pipeline.py render
+python qa.py
+```
+Strict validation yêu cầu đúng ngôn ngữ, 3–5 thành viên, logo, script, tất cả claim và footage duyệt bởi **con người**, video đúng hash và đủ thời lượng.
+MP4 bản nháp ở `output/GE1013_Kilauea_2018_DRAFT.mp4`, xem/nghe toàn bộ trước khi đăng.
 
-## D. Human QA bắt buộc trước nộp
-1. Toàn bộ sự kiện trong footage đúng chú thích ngày/địa điểm; nguồn từng clip có thể mở được.
-2. Từng claim trong kịch bản được đối chiếu với tài liệu USGS; không có 50% nội dung sao chép.
-3. Không có hình AI, AI B-roll hoặc clip minh họa tráo sự kiện.
-4. Logo trường, môn GE1013, sponsor, title nhóm, họ tên/MSSV đúng.
-5. Video 108–132 giây, dọc 1080x1920, âm rõ và phụ đề đúng thời điểm (SRT tự động chỉ ước lượng).
-6. Tôn trọng chính sách public-domain riêng của từng footage, ghi USGS credit.
-7. Đăng TikTok và nộp link qua form môn học THỦ CÔNG trước mốc quy định.
+## Checklist nộp bài
+- Mỗi đoạn footage là hình USGS thật, không gán sai nguồn/ngày/địa điểm; caption "04/06" là ngày ghi hình, nước biển từ tối 03/06.
+- Kịch bản là lời của nhóm, khoa học đúng, thông tin về magma, khe nứt và sụt lún khớp bài USGS.
+- Không bị sao chép trên 50%; xem đủ 108–132 giây, audio dễ nghe, caption đọc được, phát âm địa danh đúng.
+- Intro đủ tên video, số nhóm, MSSV, GE1013, logo trường/môn và sponsor; nhóm tiếng Anh dùng hoàn toàn tiếng Anh.
+- Tự đăng TikTok và nộp link theo form môn học, không tự động bấm nộp.
 
-## E. Status
-- Đã tự động: code/config/CI và bộ nguồn metadata; chưa có video gốc, logo được duyệt, người duyệt, audio thật hoặc rendered MP4 trong repo.
-- CI trên GitHub chỉ kiểm tra cấu trúc/syntax/test; không có quyền duyệt nội dung hoặc tạo MP4 nộp.
-- Không công khai group.json, review.json, audio có thông tin cá nhân, API keys.
+## Kết quả kiểm thử
+CI không tải các video thật và chưa thử MP4 cuối; pass CI không chứng minh đủ điểm hoặc đủ quyền sử dụng. Kiểm chứng con người là lớp cuối.

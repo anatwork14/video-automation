@@ -1,46 +1,48 @@
-# GE1013 Video Automation — 100% real footage
+# GE1013 Video Automation — footage thật, có nguồn USGS
 
-Bộ công cụ dựng TikTok khoa học Trái Đất từ **tư liệu ghi hình thật**, không sinh ảnh/video bằng AI. Chủ đề mẫu: **Kīlauea 2018** (chưa chốt với nhóm). Đây là **starter + automation**, KHÔNG phải bài nộp đã hoàn thành.
+Mục tiêu: sản xuất bản nháp TikTok địa chất 120 giây (108–132 giây theo đề bài), **chỉ sử dụng video tư liệu thật**, AI hỗ trợ nghiên cứu và giọng đọc (được ghi rõ là giọng tổng hợp). Không có ảnh hay video AI-generated. Nội dung mẫu: **Kīlauea 2018**, nhóm cần xác nhận trước khi nộp.
 
-## Yêu cầu từ đề bài môn học (PDF do nhóm cung cấp)
-- Nhóm 3–5 sinh viên; thời lượng 108–132 giây (mục tiêu 120 giây).
-- Intro BẮT BUỘC: tên video, số nhóm, họ tên và MSSV, môn GE1013, logo trường, logo môn và nhà tài trợ chính.
-- Nếu có thành viên chương trình tiếng Anh, toàn bộ video dùng tiếng Anh.
-- Nội dung đúng khoa học, dễ hiểu và có tính sáng tạo; sao chép/trùng lặp từ 50% trở lên bị xem là không hợp lệ.
-- Hạn nộp để xét giải: 16/10/2026. Nhóm tự đăng TikTok và nộp link theo hướng dẫn giảng viên.
+## ĐÃ TÍCH HỢP
+- **Free TTS mặc định:** [rany2/edge-tts](https://github.com/rany2/edge-tts), giọng `vi-VN-NamMinhNeural`, không cần API key hoặc phí theo lượt gọi hiện tại; cần Internet. KHÔNG phải phần mềm TTS offline, tính ổn định và quyền sử dụng do nhà cung cấp quyết định. Có thể chọn giọng nữ `vi-VN-HoaiMyNeural`.
+- **Word timestamps:** speech output kèm WordBoundary và hash nội dung script, sinh caption từ thời điểm từng từ, không ước lượng từ số chữ. Nội dung thay đổi sẽ chặn dùng lại giọng/phụ đề cũ.
+- **Fact/provenance gate:** `claims.json` và `SCIENCE_AUDIT.md` chứa bằng chứng USGS; người thật duyệt từng claim trong `review.json`. `media_audit.py` xác minh SHA256, file có video stream và đủ thời lượng. Clip thiếu bị chặn, KHÔNG tự đóng băng khung hình.
+- **Dựng tự động:** FFmpeg/Pillow ghép 9:16, intro có logo, nhóm, MSSV, subtitles và source credit, QA kỹ thuật.
+- **GitHub CI:** kiểm tra code, manifest, tests; không tải footage vào repo và không tự đăng TikTok.
 
-## Cách chạy
-Yêu cầu Python 3.10+, FFmpeg / FFprobe (trong PATH); máy có Internet khi tải footage. KHÔNG commit MSSV thật, API keys, MP4/video tải về.
+## BẮT ĐẦU (máy có Python 3.10+, FFmpeg+FFprobe và Internet)
 
-1. Cài thư viện: python -m pip install -r requirements.txt
-2. Điền group.json dựa trên group.example.json (tệp group.json đã được .gitignore).
-3. Mở assets.json và các source_page tương ứng; một thành viên nhóm tự đọc giấy phép và metadata, sau đó đánh dấu approved trong review.json (sao chép từ review.example.json); KHÔNG nhờ AI tự đánh dấu thay.
-4. Tải bản quay gốc từ USGS: python download_assets.py (nếu liên kết hỏng, mở source_page và tải thủ công, lưu đúng tên).
-5. Trích logo từ PDF bài tập trên máy: python extract_logos.py /duong-dan/toi/GE1013_TIKTOK.pdf . Kiểm tra vị trí cắt và logo nhà tài trợ.
-6. Chọn âm thanh: tự thu và lưu assets/voiceover.wav; hoặc dùng giọng tổng hợp (có công bố nội bộ) bằng python voiceover.py (cần OPENAI_API_KEY, có phát sinh chi phí và phải nghe kiểm duyệt).
-7. Kiểm tra cấu trúc: python validate.py ; kiểm tra nộp bài: python validate.py --strict.
-8. Dựng bản nháp: python build.py; kiểm tra báo cáo: python qa.py; nghe/xem toàn bộ output trước khi đăng.
-9. Có thể dùng Descript để soát phụ đề, cắt cảnh, cân âm. KHÔNG dùng tính năng generate B-roll/AI images/video.
+```bash
+git clone https://github.com/anatwork14/video-automation.git
+cd video-automation
+python -m pip install -r requirements.txt
+cp group.example.json group.json
+cp review.example.json review.json
+# Điền group.json (3–5 người, số nhóm, ngôn ngữ). KHÔNG commit dữ liệu cá nhân.
+# Copy file PDF giảng viên về máy, dùng đúng đường dẫn:
+python pipeline.py prepare --assignment-pdf /path/to/GE1013_TIKTOK.pdf
+```
 
-## Pipeline
-USGS originals → provenance/rights/manual approval → download + SHA256 → script/claims review → narration → FFmpeg 9:16 → technical QA → human scientific & visual QA → manual publication.
+Lệnh prepare: kiểm tra cấu trúc → tải footage USGS → trích ảnh logo bản nháp → tạo MP3 giọng Việt từng phân cảnh → phụ đề theo WordBoundary. **Nếu clip ngắn hơn phân cảnh hoặc TTS dài hơn phân cảnh, cần chỉnh timeline/script hoặc thêm footage thật rồi chạy lại.**
 
-## Các file chính
-- assets.json: bốn footage MP4 USGS chính thống, URL nguồn và ngày quay.
-- timeline.json: phân cảnh 120 giây theo thời gian.
-- NARRATION_AND_STORYBOARD.md: bản nháp lời dẫn, có nguồn.
-- group.example.json: mẫu thông tin nhóm; KHÔNG đưa MSSV thật lên repo public.
-- review.example.json: chốt kiểm chứng độc lập bắt buộc.
-- download_assets.py, extract_logos.py, voiceover.py, build.py, validate.py, qa.py: pipeline.
-- AGENTS.md + CLAUDE.md + .agents/skills/: quy tắc & kỹ năng cho ChatGPT, Claude, Codex.
-- .github/workflows/ci.yml: kiểm tra code, cấu trúc và test trên mỗi push.
+### Chốt nguồn khoa học trước render
+Đọc `SCIENCE_AUDIT.md`, đối chiếu `claims.json` với USGS; nghe narration, xem video và kiểm tra quyền sử dụng + ngày quay. Thành viên nhóm tự đánh dấu `review.json` cho từng **asset** và **claim**, đánh dấu script/logos đã duyệt. AI không được tự tick và script không tự đăng.
 
-## Nguyên tắc bắt buộc
-1. Không tạo hay biến đổi video theo hướng dựng giả sự kiện. Chỉ cắt, ghép, chỉnh sáng cơ bản, letterbox, chèn phụ đề và attribution.
-2. Không dùng footage không xác định được quay ở đâu/khi nào, giấy phép nào.
-3. Không sử dụng câu chuyện khoa học do AI tự suy đoán. Mỗi claim quan trọng cần nguồn kiểm chứng.
-4. Tôn trọng giấy phép riêng của từng media; không suy luận mọi ảnh trên website USGS đều public domain.
-5. Hoạt động nghiên cứu/dựng có thể tự động; **duyệt khoa học, tư liệu và bấm đăng/nộp vẫn phải do nhóm** thực hiện.
-6. Repo công khai: không đưa MSSV của bạn học, giọng thu cá nhân hay API key lên GitHub.
+```bash
+python validate.py --strict
+python pipeline.py render
+# output/GE1013_Kilauea_2018_DRAFT.mp4
+```
 
-**Trạng thái:** chưa có footage tải sẵn, logo được cung cấp riêng qua ZIP trước đó, chưa có giọng đọc và chưa có bài MP4 đã nghiệm thu. Tất cả clip nguồn được dẫn trong manifest để tải và kiểm tra trên máy người dùng.
+Giọng khác: `python pipeline.py prepare --voice vi-VN-HoaiMyNeural --force-tts --assignment-pdf ...`.
+
+Không dùng giọng AI: `python pipeline.py prepare --no-tts --no-subtitles --assignment-pdf ...`, đặt `assets/voiceover.wav` (bắt đầu nói sau intro) và căn caption thủ công qua Descript hoặc phần mềm dựng. **TTS không phải giọng người thật**.
+
+## GIỚI HẠN KHÔNG ĐƯỢC GIẤU
+1. Pipeline mới kiểm thử cú pháp/cấu trúc và unit tests trong GitHub CI; **chưa render một video thật end-to-end** bởi vì repo công khai không có bản tải MP4/giọng/logo/thông tin nhóm.
+2. Xác minh hash file **không chứng minh** license hay độ chính xác của hình. Phải xem clip, đối chiếu USGS trực tiếp.
+3. Giọng nói có thể đọc sai tên riêng tiếng Hawaii; cần nghe và sửa script phát âm.
+4. Nguồn tư liệu cho Kapoho Bay: dung nham vào biển tối **03/06**, video ghi **04/06**. Không ghi sai ngày đầu tiên.
+5. Intro bắt buộc tên video/số nhóm/tên+MSSV/GE1013/logo trường, môn và sponsor; nếu nhóm có thành viên chương trình Tiếng Anh thì dùng Anh toàn bộ. Đây là repo công khai nên không commit MSSV, keys, media thật.
+6. Sau khi xem/nghe và đối chiếu rubric, nhóm tự đăng và nộp link TikTok trước hạn nộp có trong PDF.
+
+Đọc tiếp [RUNBOOK.md](RUNBOOK.md), [SCIENCE_AUDIT.md](SCIENCE_AUDIT.md), [AGENTS.md](AGENTS.md).

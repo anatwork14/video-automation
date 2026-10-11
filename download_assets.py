@@ -26,7 +26,21 @@ for item in assets:
     if item["license_as_stated_on_source"] != "Public Domain":
         raise SystemExit("Rights are not declared for: " + item["id"])
     if dst.exists() and dst.stat().st_size > 2048:
-        print("Already downloaded:", dst.name)
+        sha = hashlib.sha256()
+        with dst.open("rb") as previous_media:
+            for block in iter(lambda: previous_media.read(1024 * 1024), b""):
+                sha.update(block)
+        expected = dst.with_suffix(".sha256")
+        contents = sha.hexdigest() + "  " + dst.name
+        if expected.exists():
+            if expected.read_text(encoding="utf-8").strip() != contents:
+                failures += 1
+                print("FAILED hash check for existing source:", dst.name, file=sys.stderr)
+                continue
+        else:
+            expected.write_text(contents + "\n", encoding="utf-8")
+            print("WARNING: new SHA256 snapshot of pre-existing file; compare with SOURCE and REVIEW manually:", dst.name)
+        print("Already downloaded, SHA256 consistent:", dst.name)
         continue
     partial = dst.with_suffix(".partial")
     h = hashlib.sha256()

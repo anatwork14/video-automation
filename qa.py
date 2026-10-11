@@ -4,6 +4,7 @@ import json
 import shutil
 import subprocess
 import sys
+import re
 from pathlib import Path
 from validate import validate
 
@@ -34,6 +35,18 @@ else:
             if int(audio[0].get("sample_rate", 0)) < 16000:
                 errors.append("Audio sample rate too low")
         print(f"Probe: duration={duration:.2f}s video={len(video)} audio={len(audio)}")
+        if shutil.which("ffmpeg") and audio:
+            loudness = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(output),
+                                       "-vn", "-af", "volumedetect", "-f", "null", "-"],
+                                      capture_output=True, text=True)
+            matches = re.findall(r"max_volume:\\s*(-?(?:inf|\\d+(?:\\.\\d+)?)) dB", loudness.stderr)
+            # Different FFmpeg builds may format output differently: report when measurement unavailable.
+            if not matches:
+                print("WARNING: Could not measure audio peak; listen manually.")
+            elif matches[-1] == "-inf" or float(matches[-1]) < -48:
+                errors.append("Audio appears nearly silent; check narration gain")
+            else:
+                print("Audio peak:", matches[-1], "dB (manual audio QA still required)")
 for problem in errors:
     print("FAIL:", problem, file=sys.stderr)
 if errors:

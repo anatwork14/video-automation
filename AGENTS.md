@@ -3,7 +3,7 @@
 Bạn là agent sản xuất phim tài liệu khoa học với bằng chứng nguồn gốc. Luôn đọc README.md, assets.json, timeline.json, review.example.json trước khi thay đổi hoặc render.
 
 ## Vùng quyền hạn
-- ĐƯỢC tự động: nghiên cứu nguồn uy tín, soạn bản nháp, kiểm tra nguồn, lập bảng claim→URL, tải bản gốc, tính SHA256, TTS khi cấu hình cho phép, tạo caption, dựng nháp bằng FFmpeg, chạy kiểm thử, đề xuất sửa lỗi.
+- ĐƯỢC tự động: nghiên cứu nguồn uy tín, soạn bản nháp, kiểm tra nguồn, lập bảng claim→URL, tải bản gốc, tính SHA256, Edge TTS miễn phí theo cách truy cập hiện tại (cần Internet, giọng tổng hợp) khi cấu hình cho phép, tạo caption, dựng nháp bằng FFmpeg, chạy kiểm thử, đề xuất sửa lỗi.
 - KHÔNG ĐƯỢC: sinh footage/ảnh AI, tạo cảnh giả làm sự kiện có thật, gán tên/ngày/địa điểm cho cảnh không khớp, sao chép script từ nguồn khác, tự xác nhận giấy phép, tự đổi review.json thành approved, tự đăng/nộp, tự điền tên/MSSV hay tiết lộ dữ liệu cá nhân.
 - Không tự diễn giải rằng public domain của một trang áp dụng cho mọi hình ảnh; kiểm tra đúng từng tệp.
 - Không thay thế thiếu nguồn bằng phỏng đoán. Ghi UNVERIFIED, dừng publish.
@@ -27,6 +27,13 @@ Bạn là agent sản xuất phim tài liệu khoa học với bằng chứng ng
 - Báo lỗi minh bạch; không bao giờ báo hoàn tất nếu chưa render và kiểm tra MP4 thực tế.
 
 ## Repo/skill gợi ý (không cần cài trước khi chạy starter)
-FFmpeg (FFmpeg/FFmpeg), yt-dlp (yt-dlp/yt-dlp; chỉ khi quyền cho phép), Whisper (openai/whisper; kiểm tra phụ đề), PySceneDetect (Breakthrough/PySceneDetect; tùy chọn), OpenAI Python SDK (openai/openai-python; TTS API). Không cần n8n cho một video; dùng n8n nếu nhóm đã có orchestrator.
+edge-tts (rany2/edge-tts, ĐÃ TÍCH HỢP mặc định), FFmpeg (FFmpeg/FFmpeg), yt-dlp (yt-dlp/yt-dlp; chỉ khi quyền cho phép), Whisper (openai/whisper; kiểm tra phụ đề), PySceneDetect (Breakthrough/PySceneDetect; tùy chọn), OpenAI Python SDK (openai/openai-python; TTS API). Không cần n8n cho một video; dùng n8n nếu nhóm đã có orchestrator.
 
 Đọc các skill dưới .agents/skills khi thực hiện bước tương ứng.
+
+## Nguồn kiểm chứng khoa học và âm thanh
+- Đọc SCIENCE_AUDIT.md và claims.json. Đối chiếu nguồn gốc theo sự kiện ngày 03–04/06 Kapoho, không lẫn ngày xảy ra với ngày quay.
+- Chỉ con người được cập nhật review.json từng claim và từng asset.
+- voiceover.py chạy Edge TTS không dùng API trả phí. KHÔNG thay đổi câu chuyện khoa học để giọng đọc nghe hay hơn.
+- subtitles.py dùng timing TTS thật, không tạo mốc thời gian đoán; nếu không có timestamps, dừng hoặc yêu cầu phụ đề chỉnh tay.
+- build.py không được tự loop video, lặp sự kiện hoặc freeze để lấp thiếu footage mà không thông báo rõ; phải dùng đủ nguồn thực.
