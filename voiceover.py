@@ -141,7 +141,7 @@ async def run(args):
     print("Voice:", voice, "Rate:", args.rate)
     for item in narration["segments"]:
         index = item["index"]
-        if not (1 <= index < len(timeline)):
+        if not (0 <= index < len(timeline)):
             raise ValueError(f"Invalid narration index {index}")
         text = item["text"].strip()
         if not text:

@@ -1,0 +1,77 @@
+{
+  "format": "portrait_1080x1920_30fps",
+  "duration_seconds": 120,
+  "segments": [
+    {
+      "kind": "intro",
+      "duration": 10,
+      "heading": "KĪLAUEA 2018",
+      "caption": "Eruptive fissures and a collapsing summit",
+      "background": {
+        "asset_id": "may22_fissure22",
+        "start_seconds": 5.0,
+        "crop": {
+          "w": 608,
+          "h": 1080,
+          "x": 420,
+          "y": 0
+        },
+        "credit": "Background: authentic USGS drone footage, fissure 22, 22 May 2018"
+      }
+    },
+    {
+      "kind": "video",
+      "asset_id": "may16_fissure18",
+      "duration": 22,
+      "heading": "16 MAY 2018 | FISSURE 18",
+      "caption": "Authentic field footage · USGS",
+      "start_seconds": 7.0,
+      "crop": {
+        "w": 726,
+        "h": 1080,
+        "x": 598,
+        "y": 0
+      },
+      "field_audio_lufs": -32
+    },
+    {
+      "kind": "video",
+      "asset_id": "may22_fissure22",
+      "duration": 22,
+      "heading": "22 MAY 2018 | LAVA ON THE MOVE",
+      "caption": "USGS drone video · East Rift Zone",
+      "start_seconds": 16.0,
+      "fill": "blur"
+    },
+    {
+      "kind": "video",
+      "asset_id": "jun04_kapoho",
+      "duration": 26,
+      "heading": "4 JUNE 2018 | KAPOHO BAY",
+      "caption": "Filmed June 4 · Ocean entry began late June 3",
+      "start_seconds": 12.0,
+      "fill": "blur"
+    },
+    {
+      "kind": "video",
+      "asset_id": "jun30_summit",
+      "duration": 29,
+      "heading": "30 JUNE 2018 | SUMMIT COLLAPSE EVENT",
+      "caption": "Rockfall and a small dust plume · USGS",
+      "start_seconds": 24.0,
+      "fill": "blur"
+    },
+    {
+      "kind": "outro",
+      "duration": 11,
+      "heading": "KĪLAUEA 2018",
+      "caption": "Footage: USGS · Science: USGS / Neal et al. (2019)",
+      "background": {
+        "asset_id": "may22_fissure22",
+        "start_seconds": 91.0,
+        "credit": "Background: authentic USGS drone footage, fissure 22, 22 May 2018"
+      }
+    }
+  ],
+  "proposal_note": "EDITORIAL PROPOSAL ONLY (draft.py renders it, build.py never does). Windows measured on the downloaded USGS originals with 1 fps contact sheets; a reviewer must watch each window, then copy accepted values into timeline.json and approve its hash."
+}

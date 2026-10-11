@@ -14,7 +14,9 @@ output/final_review.json (written by a human, never by automation):
 Signature: ssh-keygen -Y sign -f ~/.ssh/id_ed25519 -n ge1013-review output/final_review.json
            -> move output/final_review.json.sig to output/final_review.sigs/<reviewer_id>.sig
 """
+import argparse
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -55,10 +57,27 @@ def release_problems(root=ROOT, output=None):
     return errors
 
 
-if __name__ == "__main__":
-    problems = release_problems()
+FINAL_NAME = "GE1013_Kilauea_2018_FINAL.mp4"
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--export-final", action="store_true",
+                        help=f"after a PASS, copy the approved MP4 to output/{FINAL_NAME}")
+    args = parser.parse_args(argv)
+    problems = release_problems(ROOT)
     for problem in problems:
         print("FAIL:", problem, file=sys.stderr)
     if problems:
         raise SystemExit(1)
     print("RELEASE CHECK PASS for this exact MP4. Upload and submit MANUALLY; nothing was published.")
+    if args.export_final:
+        target = ROOT / "output" / FINAL_NAME
+        shutil.copyfile(ROOT / "output" / OUTPUT.name, target)
+        if sha256_file(target) != sha256_file(ROOT / "output" / OUTPUT.name):
+            raise SystemExit("FINAL copy does not match the approved MP4")
+        print("EXPORTED:", "output/" + FINAL_NAME, sha256_file(target))
+
+
+if __name__ == "__main__":
+    main()

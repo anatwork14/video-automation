@@ -79,9 +79,27 @@ def validate(strict=False, root=ROOT):
     for index, seg in enumerate(segments):
         if seg.get("kind") not in ("intro", "video", "outro"):
             errors.append(f"Scene {index}: unknown kind {seg.get('kind')!r}")
-        start = seg.get("start_seconds", 0)
-        if isinstance(start, bool) or not isinstance(start, (int, float)) or start < 0:
-            errors.append(f"Scene {index}: start_seconds must be a non-negative number")
+        refs = [seg] if seg.get("kind") == "video" else []
+        if "background" in seg:
+            if seg.get("kind") not in ("intro", "outro") or not isinstance(seg["background"], dict):
+                errors.append(f"Scene {index}: background is only allowed on intro/outro as an object")
+            else:
+                refs.append(seg["background"])
+                if seg["background"].get("asset_id") not in ids:
+                    errors.append(f"Scene {index}: background references unknown footage")
+        for ref in refs or [seg]:
+            start = ref.get("start_seconds", 0)
+            if isinstance(start, bool) or not isinstance(start, (int, float)) or start < 0:
+                errors.append(f"Scene {index}: start_seconds must be a non-negative number")
+            crop = ref.get("crop")
+            if crop is not None and (not isinstance(crop, dict) or set(crop) != {"w", "h", "x", "y"} or any(
+                    isinstance(v, bool) or not isinstance(v, int) or v < 0 for v in crop.values())):
+                errors.append(f"Scene {index}: crop must be {{w,h,x,y}} non-negative integers")
+            if ref.get("fill", "black") not in ("black", "blur"):
+                errors.append(f"Scene {index}: fill must be 'black' or 'blur'")
+            lufs = ref.get("field_audio_lufs")
+            if lufs is not None and (isinstance(lufs, bool) or not isinstance(lufs, (int, float)) or not -40 <= lufs <= -20):
+                errors.append(f"Scene {index}: field_audio_lufs must be between -40 and -20 (background bed)")
     try:
         duration = sum(float(s["duration"]) for s in segments)
         if abs(duration - float(timeline["duration_seconds"])) > 0.1 or not 108 <= duration <= 132:

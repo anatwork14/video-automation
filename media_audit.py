@@ -40,9 +40,13 @@ def audit(root=ROOT):
     assets = json.loads((root / "assets.json").read_text(encoding="utf-8"))["assets"]
     scenes = json.loads((root / "timeline.json").read_text(encoding="utf-8"))["segments"]
     by_id = {a["id"]: a for a in assets}
+    windows = []
     for scene in scenes:
-        if scene.get("kind") != "video":
-            continue
+        if scene.get("kind") == "video":
+            windows.append(scene)
+        elif isinstance(scene.get("background"), dict):  # real footage behind an intro/outro card
+            windows.append(dict(scene["background"], duration=scene.get("duration")))
+    for scene in windows:
         item = by_id.get(scene.get("asset_id"))
         if not item:
             errors.append(f"Unknown scene source {scene.get('asset_id')}")

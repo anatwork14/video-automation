@@ -16,6 +16,7 @@ Guarantees enforced here (and re-checked by qa.py):
 """
 import argparse
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -49,6 +50,9 @@ SUB_TOP, SUB_BOTTOM = 1390, 1610    # subtitles: two lines max, below 16:9 foota
 LABEL_Y = 1700                      # synthetic-voice disclosure pill
 CARD_LABEL_Y = 1772                 # authentic-footage label on intro/outro cards
 CREDIT_TOP = 1842                   # agency credit bar
+WATERMARK_Y = 32                    # review-draft watermark (above the caption box)
+FADE = 0.25                         # dip-to-black transition at every scene boundary (seconds)
+TARGET_LUFS, TRUE_PEAK = -16.0, -1.5  # whole-mix loudness for mobile playback
 
 
 def run_ffmpeg(args, cwd=ROOT):
@@ -197,52 +201,80 @@ def subtitle_image(text):
     return image, (box[0], SUB_TOP + box[1], box[2], SUB_TOP + box[3])
 
 
-def make_card(file, seg, intro, group, assets_dir, disclosure=None):
-    image = Image.new("RGB", (W, H), "#081b2d")
-    d = ImageDraw.Draw(image, "RGBA")
-    if intro:
-        logo = Image.open(assets_dir / "logos_from_assignment.png").convert("RGB")
-        logo.thumbnail((1000, 220), Image.Resampling.LANCZOS)
-        image.paste(logo, ((W - logo.width) // 2, 160))
+def draw_watermark(d, text):
+    face, _, lines = fit_text(text, 26, 18, TEXT_WIDTH, 1, "Watermark")
+    width = face.getlength(lines[0])
+    box = (round(W / 2 - width / 2 - 18), WATERMARK_Y - 22, round(W / 2 + width / 2 + 18), WATERMARK_Y + 22)
+    d.rounded_rectangle(box, radius=20, fill=(150, 20, 20, 215))
+    d.text((W // 2, WATERMARK_Y), lines[0], font=face, anchor="mm", fill="white")
+    return box
+
+
+def centered_lines(d, text, y, size, min_size, max_lines, fill, what, step=1.25):
+    face, current, lines = fit_text(text, size, min_size, TEXT_WIDTH, max_lines, what)
+    for line in balance_lines(lines, face):
+        d.text((W // 2, y), line, font=face, anchor="mt", fill=fill)
+        y += round(current * step)
+    return y
+
+
+def make_card(file, seg, intro, group, assets_dir, disclosure=None, background=None, watermark=None):
+    """Intro/outro card. With `background` the card is a transparent layer over dimmed real footage."""
+    if background:
+        image = Image.new("RGBA", (W, H), (4, 16, 30, 120))
     else:
-        d.text((W // 2, 250), "USGS · 2018", font=font(41), anchor="mm", fill="#add9f0")
-    y = 525
-    for line in wrap(seg["heading"], 17):
-        d.text((W // 2, y), line, font=font(78), anchor="mm", fill="white")
-        y += 108
-    y += 50
-    for line in wrap(seg["caption"], 34):
-        d.text((W // 2, y), line, font=font(37), anchor="mm", fill="#cee5f7")
-        y += 58
+        image = Image.new("RGBA", (W, H), (8, 27, 45, 255))
+    d = ImageDraw.Draw(image, "RGBA")
     boxes = []
     if intro:
-        y = max(y + 90, 1110)
-        d.text((W // 2, y), labels(group)["team"] + str(group["group_number"]), font=font(54),
-               anchor="mm", fill="#ffe3a1")
-        y += 90
+        logo_path = assets_dir / "logos_from_assignment.png"
+        if logo_path.is_file():
+            logo = Image.open(logo_path).convert("RGBA")
+            logo.thumbnail((1000, 200), Image.Resampling.LANCZOS)
+            image.alpha_composite(logo, ((W - logo.width) // 2, 110))
+        else:  # never invent logos: show an explicit placeholder in review drafts
+            d.rounded_rectangle((90, 110, W - 90, 290), radius=18, outline=(255, 227, 161, 255), width=3)
+            d.text((W // 2, 200), "[School / course / sponsor logos: from the assignment PDF]",
+                   font=font(30), anchor="mm", fill="#ffe3a1")
+        y = centered_lines(d, seg["heading"], 380, 96, 60, 2, "white", "Intro title", 1.1)
+        y = centered_lines(d, seg["caption"], y + 24, 44, 30, 2, "#cee5f7", "Intro caption")
+        y = centered_lines(d, group["course"], y + 40, 40, 28, 2, "#c8e2f8", "Course")
+        y = centered_lines(d, labels(group)["team"] + str(group["group_number"]), y + 40, 52, 34, 1,
+                           "#ffe3a1", "Group number")
         for member in group["team_members"]:
-            for line in wrap(f"{member['name']} — {member['student_id']}", 34):
-                d.text((W // 2, y), line, font=font(31), anchor="mm", fill="white")
-                y += 52
-        d.text((W // 2, 1810), group["course"], font=font(38), anchor="mm", fill="#c8e2f8")
+            y = centered_lines(d, f"{member['name']} — {member['student_id']}", y + 8, 34, 26, 2,
+                               "white", "Member line")
+        if y > SUB_TOP - 20:
+            raise ValueError("Intro names run into the subtitle band; shorten or reduce members")
     else:
+        y = 250
+        d.text((W // 2, y), "USGS · 2018", font=font(41), anchor="mm", fill="#add9f0")
+        y = centered_lines(d, seg["heading"], 470, 78, 54, 2, "white", "Outro title", 1.15)
+        y = centered_lines(d, seg["caption"], y + 30, 38, 28, 3, "#cee5f7", "Outro caption", 1.35)
         if y > SUB_TOP:
             raise ValueError(f"Card text runs into the subtitle band: {seg['heading']!r}")
-        label = labels(group)["authentic"]
-        d.text((W // 2, CARD_LABEL_Y), label, font=font(27), anchor="mm", fill="#c8e2f8")
-        boxes.append(d.textbbox((W // 2, CARD_LABEL_Y), label, font=font(27), anchor="mm"))
+    footer = labels(group)["authentic"]
+    if background:
+        footer = background["credit"]
+    face, _, lines = fit_text(footer, 27, 20, TEXT_WIDTH, 1, "Card footer")
+    d.text((W // 2, CARD_LABEL_Y), lines[0], font=face, anchor="mm", fill="#c8e2f8")
+    boxes.append(d.textbbox((W // 2, CARD_LABEL_Y), lines[0], font=face, anchor="mm"))
     if disclosure:
         boxes.append(draw_disclosure(d, disclosure))
+    if watermark:
+        boxes.append(draw_watermark(d, watermark))
     image.save(file)
     return boxes
 
 
-def make_overlay(file, seg, media, disclosure=None):
+def make_overlay(file, seg, media, disclosure=None, watermark=None):
     image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(image)
     boxes = [draw_top_box(d, seg), draw_credit(d, media["agency_credit"])]
     if disclosure:
         boxes.append(draw_disclosure(d, disclosure))
+    if watermark:
+        boxes.append(draw_watermark(d, watermark))
     image.save(file)
     return boxes
 
@@ -270,39 +302,73 @@ def cue_overlays(index, cues, tmp_dir, first_input, label):
     return inputs, chain, f"{label}{len(cues)}"
 
 
-def render_video(index, seg, asset_index, group, assets_dir, tmp_dir, cues=(), disclosure=None):
+def source_window(asset_index, assets_dir, ref, duration):
+    """Resolve and length-check a real-footage window {asset_id, start_seconds}."""
+    media = asset_index[ref["asset_id"]]
+    src = assets_dir / media["filename"]
+    start = float(ref.get("start_seconds", 0))
+    available = probe_length(src) - start
+    if available <= 0:
+        raise ValueError(f"No usable source frames for {media['id']}")
+    if available < duration:
+        raise ValueError(
+            f"Insufficient REAL footage for {media['id']}: only {available:.2f}s remaining, "
+            f"scene requires {duration:.2f}s. Find another verified source or revise storyboard."
+        )
+    return media, src, start
+
+
+def fades(duration):
+    return f"fade=t=in:st=0:d={FADE},fade=t=out:st={duration - FADE:.3f}:d={FADE}"
+
+
+def render_video(index, seg, asset_index, group, assets_dir, tmp_dir, cues=(), disclosure=None, watermark=None):
     duration = float(seg["duration"])
     frames = frames_for(duration)
     base = tmp_dir / f"{index:02d}_visual.mp4"
     if seg["kind"] in ("intro", "outro"):
         still = tmp_dir / f"{index:02d}_card.png"
-        make_card(still, seg, seg["kind"] == "intro", group, assets_dir, disclosure)
-        extra, chain, last = cue_overlays(index, cues, tmp_dir, 1, "c")
-        graph = ";".join([f"[0:v]trim=end_frame={frames},setpts=PTS-STARTPTS[c0]", *chain,
-                          f"[{last}]format=yuv420p[v]"])
-        run_ffmpeg(["-loop", "1", "-framerate", FPS, "-i", still, *extra, "-filter_complex", graph,
-                    "-map", "[v]", "-an", "-frames:v", frames, *VIDEO_ARGS, base])
+        background = seg.get("background")
+        if background:
+            media, src, start = source_window(asset_index, assets_dir, background, duration)
+            background = dict(background, credit=background.get("credit") or media["agency_credit"])
+        make_card(still, seg, seg["kind"] == "intro", group, assets_dir, disclosure, background, watermark)
+        if background:
+            # Real footage, dimmed and softened so the title reads; credited on the card footer.
+            extra, chain, last = cue_overlays(index, cues, tmp_dir, 2, "c")
+            graph = ";".join([
+                f"[0:v]{crop_filter(background, src)}fps={FPS},"
+                f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1,"
+                "eq=brightness=-0.18:saturation=0.85,gblur=sigma=3,"
+                f"trim=end_frame={frames},setpts=PTS-STARTPTS[bg]",
+                "[bg][1:v]overlay=0:0:shortest=1:format=auto[c0]", *chain,
+                f"[{last}]{fades(duration)},format=yuv420p[v]"])
+            run_ffmpeg(["-ss", start, "-i", src, "-loop", "1", "-i", still, *extra, "-filter_complex", graph,
+                        "-map", "[v]", "-an", "-frames:v", frames, *VIDEO_ARGS, base])
+        else:
+            extra, chain, last = cue_overlays(index, cues, tmp_dir, 1, "c")
+            graph = ";".join([f"[0:v]trim=end_frame={frames},setpts=PTS-STARTPTS[c0]", *chain,
+                              f"[{last}]{fades(duration)},format=yuv420p[v]"])
+            run_ffmpeg(["-loop", "1", "-framerate", FPS, "-i", still, *extra, "-filter_complex", graph,
+                        "-map", "[v]", "-an", "-frames:v", frames, *VIDEO_ARGS, base])
     else:
-        media = asset_index[seg["asset_id"]]
-        src = assets_dir / media["filename"]
-        start = float(seg.get("start_seconds", 0))
-        available = probe_length(src) - start
-        if available <= 0:
-            raise ValueError(f"No usable source frames for {media['id']}")
-        if available < duration:
-            raise ValueError(
-                f"Insufficient REAL footage for {media['id']}: only {available:.2f}s remaining, "
-                f"scene requires {duration:.2f}s. Find another verified source or revise storyboard."
-            )
+        media, src, start = source_window(asset_index, assets_dir, seg, duration)
         overlay = tmp_dir / f"{index:02d}_overlay.png"
-        make_overlay(overlay, seg, media, disclosure)
+        make_overlay(overlay, seg, media, disclosure, watermark)
         extra, chain, last = cue_overlays(index, cues, tmp_dir, 2, "s")
-        graph = ";".join([
-            f"[0:v]{crop_filter(seg, src)}fps={FPS},"
-            f"scale={W}:{H}:force_original_aspect_ratio=decrease,"
-            f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,"
-            f"trim=end_frame={frames},setpts=PTS-STARTPTS[bg]",
-            "[bg][1:v]overlay=0:0:shortest=1:format=auto[s0]", *chain, f"[{last}]format=yuv420p[v]"])
+        head = f"[0:v]{crop_filter(seg, src)}fps={FPS},trim=end_frame={frames},setpts=PTS-STARTPTS"
+        if seg.get("fill") == "blur":
+            # Same genuine shot, blurred and darkened behind the full uncropped picture (no black bars).
+            frame = [f"{head},split[full][back]",
+                     f"[back]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+                     "gblur=sigma=28,eq=brightness=-0.22:saturation=0.8[blurred]",
+                     f"[full]scale={W}:{H}:force_original_aspect_ratio=decrease[fit]",
+                     "[blurred][fit]overlay=(W-w)/2:(H-h)/2,setsar=1[bg]"]
+        else:
+            frame = [f"{head},scale={W}:{H}:force_original_aspect_ratio=decrease,"
+                     f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:black,setsar=1[bg]"]
+        graph = ";".join([*frame, "[bg][1:v]overlay=0:0:shortest=1:format=auto[s0]", *chain,
+                          f"[{last}]{fades(duration)},format=yuv420p[v]"])
         run_ffmpeg(["-ss", start, "-i", src, "-loop", "1", "-i", overlay, *extra,
                     "-filter_complex", graph, "-map", "[v]", "-an", "-frames:v", frames, *VIDEO_ARGS, base])
     rendered = count_frames(base)
@@ -320,21 +386,66 @@ def check_narration_fits(index, audio, duration):
     return d
 
 
-def build_audio(segments, scene_audio, recorded, target, cwd=ROOT):
-    """One AAC encode for the whole film. Speech is padded with silence, never trimmed."""
+def loudness(args, cwd=ROOT):
+    """EBU R128 integrated loudness (LUFS) and true peak (dBFS) of an FFmpeg input spec."""
+    result = subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-nostats", *map(str, args),
+                             "-vn", "-af", "ebur128=peak=true", "-f", "null", "-"],
+                            capture_output=True, text=True, cwd=cwd)
+    level = re.findall(r"I:\s+(-?[\d.]+|-inf) LUFS", result.stderr)
+    peak = re.findall(r"Peak:\s+(-?[\d.]+|-inf) dBFS", result.stderr)
+    if result.returncode or not level:
+        raise ValueError("Could not measure loudness")
+    return float(level[-1]), float(peak[-1]) if peak else 0.0
+
+
+def bed_windows(segments, asset_index, assets_dir):
+    """{scene: (source, start, target LUFS)} for scenes that request authentic field audio."""
+    beds = {}
+    for i, seg in enumerate(segments):
+        ref = seg if seg.get("kind") == "video" else seg.get("background")
+        if not ref or ref.get("field_audio_lufs") is None:
+            continue
+        src = assets_dir / asset_index[ref["asset_id"]]["filename"]
+        beds[i] = (src, float(ref.get("start_seconds", 0)), float(ref["field_audio_lufs"]))
+    return beds
+
+
+def build_audio(segments, scene_audio, recorded, target, cwd=ROOT, beds=None):
+    """One AAC encode for the whole film. Speech is padded with silence, never trimmed.
+
+    Optional per-scene beds of the clip's own field audio are loudness-matched and
+    mixed under the narration; the whole mix is then normalised to TARGET_LUFS with
+    a TRUE_PEAK ceiling (gain only, no compression of the speech).
+    """
+    beds = beds or {}
     total = sum(float(s["duration"]) for s in segments)
     inputs, chains = [], []
-    if scene_audio:
+    if scene_audio or beds:
         for i, seg in enumerate(segments):
             duration = float(seg["duration"])
             k = inputs.count("-i")  # FFmpeg input index of the next input
             if i in scene_audio:
                 check_narration_fits(i, scene_audio[i], duration)
                 inputs += ["-i", scene_audio[i]]
-                chains.append(f"[{k}:a]{AUDIO_FORMAT},apad=whole_dur={duration}[a{i}]")
+                chains.append(f"[{k}:a]{AUDIO_FORMAT},apad=whole_dur={duration}[v{i}]")
             else:
                 inputs += ["-f", "lavfi", "-t", duration, "-i", "anullsrc=r=48000:cl=stereo"]
-                chains.append(f"[{k}:a]{AUDIO_FORMAT}[a{i}]")
+                chains.append(f"[{k}:a]{AUDIO_FORMAT}[v{i}]")
+            if i in beds:
+                src, start, lufs = beds[i]
+                measured, _ = loudness(["-ss", start, "-t", duration, "-i", src], cwd)
+                if measured <= -69.5:  # ebur128 reports its absolute gate (-70 LUFS) for silence
+                    raise ValueError(f"Scene {i}: field audio requested but the source window is silent")
+                gain = min(lufs - measured, 15.0)
+                k = inputs.count("-i")
+                inputs += ["-ss", start, "-t", duration, "-i", src]
+                # Limiter keeps transients (e.g. a vent explosion) from dominating the mix.
+                chains.append(f"[{k}:a]{AUDIO_FORMAT},volume={gain:.2f}dB,alimiter=limit=0.25:level=false,"
+                              f"afade=t=in:d={FADE},"
+                              f"afade=t=out:st={duration - FADE:.3f}:d={FADE},apad=whole_dur={duration}[b{i}]")
+                chains.append(f"[v{i}][b{i}]amix=inputs=2:normalize=0:duration=first[a{i}]")
+            else:
+                chains.append(f"[v{i}]anull[a{i}]")
         chains.append("".join(f"[a{i}]" for i in range(len(segments)))
                       + f"concat=n={len(segments)}:v=0:a=1[a]")
     else:
@@ -345,8 +456,13 @@ def build_audio(segments, scene_audio, recorded, target, cwd=ROOT):
                              "after the intro. Shorten it; NEVER trim speech.")
         inputs += ["-i", recorded]
         chains.append(f"[0:a]{AUDIO_FORMAT},adelay={round(intro * 1000)}:all=1,apad=whole_dur={total}[a]")
-    run_ffmpeg([*inputs, "-filter_complex", ";".join(chains), "-map", "[a]",
-                "-c:a", "aac", "-b:a", "160k", "-ar", "48000", target], cwd=cwd)
+    mix = Path(target).with_suffix(".mix.wav")
+    run_ffmpeg([*inputs, "-filter_complex", ";".join(chains), "-map", "[a]", "-c:a", "pcm_s16le",
+                "-ar", "48000", mix], cwd=cwd)
+    level, peak = loudness(["-i", mix], cwd)
+    gain = min(TARGET_LUFS - level, TRUE_PEAK - peak) if level > -69.5 else 0.0
+    run_ffmpeg(["-i", mix, "-af", f"volume={gain:.2f}dB", "-c:a", "aac", "-b:a", "160k", "-ar", "48000",
+                target], cwd=cwd)
     produced = probe_length(target)
     if produced < total - 0.05:
         raise ValueError(f"Audio track is {produced:.2f}s, expected {total:.2f}s")
@@ -360,25 +476,19 @@ def voice_disclosure(group, mode):
     return text + (" · Edge TTS" if mode == "edge_tts" else "")
 
 
-def build_draft(root=ROOT, no_subtitles=False):
+def render_film(root, group, synthetic_voice, audio_mode, no_subtitles=False, watermark=None,
+                final_name=FINAL_NAME):
+    """Render the whole film from root/{timeline,narration,assets}.json. Callers do the gating."""
     global FONT_PATH
     root = Path(root)
-    failures = validate(strict=True, root=root)
-    if failures:
-        for issue in failures:
-            print("STOP:", issue)
-        raise SystemExit(1)
     if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
         raise SystemExit("Install ffmpeg and ffprobe first")
     FONT_PATH = FONT_PATH or next((p for p in FONTS if Path(p).exists()), None)
     if not FONT_PATH:
         raise SystemExit("Unicode bold font missing. Install DejaVu Sans.")
-    before = snapshot(root)
     assets_dir, out_dir = root / "assets", root / "output"
     tmp_dir = out_dir / "segments"
     tmp_dir.mkdir(parents=True, exist_ok=True)
-    group = json.loads((root / "group.json").read_text(encoding="utf-8"))
-    review = json.loads((root / "review.json").read_text(encoding="utf-8"))
     timeline = json.loads((root / "timeline.json").read_text(encoding="utf-8"))
     segments = timeline["segments"]
     asset_index = {x["id"]: x for x in json.loads((root / "assets.json").read_text(encoding="utf-8"))["assets"]}
@@ -390,8 +500,8 @@ def build_draft(root=ROOT, no_subtitles=False):
         recorded = recorded_voice_path(root, group)
         print("RECORDED VOICE:", recorded.relative_to(root).as_posix(), "starts right AFTER the intro.")
         scene_audio = {}
-    group["_synthetic_voice"] = review["audio"]["synthetic_voice"] is True
-    disclosure = voice_disclosure(group, review["audio"].get("mode"))
+    group = dict(group, _synthetic_voice=synthetic_voice is True)
+    disclosure = voice_disclosure(group, audio_mode)
     narrated = set(scene_indices)
     cues = {}
     if scene_mode and not no_subtitles:
@@ -402,17 +512,34 @@ def build_draft(root=ROOT, no_subtitles=False):
         print("RECORDED VOICE: no TTS timing available. Skipping automatic subtitles.")
         print("Add manually aligned captions in Descript; NEVER invent timestamps.")
     visuals = [render_video(i, seg, asset_index, group, assets_dir, tmp_dir, cues.get(i, ()),
-                            disclosure if i in narrated else None)
+                            disclosure if i in narrated else None, watermark)
                for i, seg in enumerate(segments)]
     concat = tmp_dir / "concat.txt"
     concat.write_text("".join(concat_line(p) for p in visuals), encoding="utf-8")
-    audio = build_audio(segments, scene_audio, recorded, tmp_dir / "narration.m4a", cwd=root)
-    final = out_dir / FINAL_NAME
+    audio = build_audio(segments, scene_audio, recorded, tmp_dir / "narration.m4a", cwd=root,
+                        beds=bed_windows(segments, asset_index, assets_dir))
+    final = out_dir / final_name
     run_ffmpeg(["-f", "concat", "-safe", "0", "-i", concat, "-i", audio, "-map", "0:v:0", "-map", "1:a:0",
                 "-c", "copy", "-movflags", "+faststart", final], cwd=root)
     expected = sum(frames_for(s["duration"]) for s in segments)
     if count_frames(final) != expected:
         raise ValueError(f"Final video has {count_frames(final)} frames, expected {expected}")
+    return final
+
+
+def build_draft(root=ROOT, no_subtitles=False):
+    """Strict build: every human approval and signature must verify first."""
+    root = Path(root)
+    failures = validate(strict=True, root=root)
+    if failures:
+        for issue in failures:
+            print("STOP:", issue)
+        raise SystemExit(1)
+    before = snapshot(root)
+    group = json.loads((root / "group.json").read_text(encoding="utf-8"))
+    review = json.loads((root / "review.json").read_text(encoding="utf-8"))
+    final = render_film(root, group, review["audio"]["synthetic_voice"], review["audio"].get("mode"),
+                        no_subtitles)
     receipt = write_build_receipt(root, final, before=before, font_path=FONT_PATH)
     print("BUILD RECEIPT:", receipt.relative_to(root).as_posix())
     print("CREATED DRAFT:", final.relative_to(root).as_posix())

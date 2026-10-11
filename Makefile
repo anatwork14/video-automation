@@ -1,5 +1,5 @@
 PYTHON ?= python3
-.PHONY: deps check strict test test-external prepare report hashes render qa release
+.PHONY: deps check strict test test-external prepare report draft hashes render qa release
 deps:
 	$(PYTHON) -m pip install -r requirements.txt
 check:
@@ -14,6 +14,8 @@ prepare:
 	$(PYTHON) pipeline.py prepare
 report:
 	$(PYTHON) footage_report.py
+draft:
+	$(PYTHON) draft.py
 hashes:
 	$(PYTHON) review_hashes.py
 render:
@@ -21,4 +23,4 @@ render:
 qa:
 	$(PYTHON) qa.py
 release:
-	$(PYTHON) release_check.py
+	$(PYTHON) release_check.py --export-final

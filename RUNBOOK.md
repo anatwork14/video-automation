@@ -84,7 +84,9 @@ cp review.example.json review.json          # để trống; chỉ người duy�
 python pipeline.py prepare --assignment-pdf /path/to/GE1013_TIKTOK.pdf [--voice en-US-GuyNeural] [--rate -5%]
 
 # 2. Đo đạc để NGƯỜI quyết định cửa sổ clip / cắt viền (không tự áp dụng)
-python footage_report.py                    # xem output/previews/*.png, sửa timeline.json nếu đồng ý
+python footage_report.py                    # xem output/previews/*.png
+python draft.py                             # bản XEM THỬ từ timeline.proposed.json: watermark đỏ, CHƯA DUYỆT,
+                                            # placeholder cho nhóm/logo; KHÔNG được đăng. Đồng ý -> chép giá trị vào timeline.json
 
 # 3. Người duyệt: đọc nguồn USGS, xem clip, nghe giọng; điền review.json từ digest
 python review_hashes.py
@@ -99,7 +101,15 @@ open output/GE1013_Kilauea_2018_DRAFT.mp4   # xem/nghe TOÀN BỘ; đọc output
 # 5. Duyệt bản cuối đúng file MP4 này (người, không phải AI), rồi kiểm tra phát hành
 shasum -a 256 output/GE1013_Kilauea_2018_DRAFT.mp4
 #    viết output/final_review.json (xem release_check.py), ký vào output/final_review.sigs/<reviewer_id>.sig
-python release_check.py                     # PASS chỉ nghĩa là đủ điều kiện; tự đăng TikTok và nộp link thủ công
+python release_check.py --export-final      # PASS -> output/GE1013_Kilauea_2018_FINAL.mp4 (bản sao đúng MP4 đã duyệt);
+                                            # tự đăng TikTok và nộp link thủ công
 ```
 Kiểm thử gọi dịch vụ ngoài (Edge TTS trực tuyến) tách riêng: `make test-external` (gửi một câu thử tới dịch vụ).
+
+## Trường tùy chọn trong timeline (chỉ có hiệu lực khi người duyệt timeline)
+- `start_seconds`, `crop {w,h,x,y}`: cửa sổ và vùng cắt của footage thật.
+- `fill: "blur"`: nền là chính cảnh đó làm mờ/tối phía sau khung hình đầy đủ (không cắt chủ thể) thay cho viền đen.
+- `field_audio_lufs` (−40…−20): lớp âm thanh hiện trường thật của clip, đo EBU R128, có limiter, nằm dưới lời đọc. Clip có track im lặng sẽ bị từ chối.
+- `background {asset_id, start_seconds, crop?, credit}` trên intro/outro: footage thật làm nền mờ cho tiêu đề, có dòng credit.
+- Toàn bộ mix được chuẩn hóa −16 LUFS, đỉnh ≤ −1,5 dBTP; mỗi cảnh chuyển tiếp mờ 0,25 s.
 

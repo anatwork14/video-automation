@@ -112,6 +112,10 @@ class EndToEndRender(unittest.TestCase):
         self.assertTrue(any("listened_full_audio must be boolean true" in e for e in problems()))
         _w(self.root, "output/final_review.json", approval)
         sign_file(self.root, "tester-0", "output/final_review.json", "output/final_review.sigs")
+        with patch.object(release_check, "ROOT", self.root), contextlib.redirect_stdout(io.StringIO()):
+            release_check.main(["--export-final"])
+        exported = self.root / "output/GE1013_Kilauea_2018_FINAL.mp4"
+        self.assertEqual(exported.read_bytes(), final.read_bytes())
         self.render(no_subtitles=False)  # re-render: a different MP4 nobody has watched
         self.assertTrue(any("approves a different MP4" in e for e in problems()))
 

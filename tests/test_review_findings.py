@@ -658,7 +658,9 @@ class QaTests(unittest.TestCase):
         def fake_run(cmd, **kwargs):
             if cmd[0] == "ffprobe":
                 return SimpleNamespace(returncode=0, stdout=probe, stderr="")
-            return SimpleNamespace(returncode=0, stdout="", stderr=stderr)
+            if "volumedetect" in cmd or "ebur128" in cmd:  # measurement passes see the scripted output
+                return SimpleNamespace(returncode=0, stdout="", stderr=stderr)
+            return SimpleNamespace(returncode=0, stdout="", stderr="")  # clean decode, no black/freeze
 
         def which(name):
             return "/bin/" + name if (name == "ffprobe" or ffmpeg_present) else None
@@ -677,14 +679,14 @@ class QaTests(unittest.TestCase):
 
     def test_silent_audio_rejected(self):
         # Exact volumedetect output for digital silence.
-        silence = "mean_volume: -91.0 dB\nmax_volume: -91.0 dB"
+        silence = "mean_volume: -91.0 dB\nmax_volume: -91.0 dB\n    I:         -70.0 LUFS"
         self.assertTrue(any("not audible" in e for e in self._run(silence)))
 
     def test_normal_audio_passes(self):
-        self.assertEqual(self._run("mean_volume: -25.0 dB\nmax_volume: -6.2 dB"), [])
+        self.assertEqual(self._run("mean_volume: -25.0 dB\nmax_volume: -6.2 dB\n    I:         -16.4 LUFS"), [])
 
     def test_wrong_length_and_missing_audio_rejected(self):
-        self.assertTrue(any("Length outside" in e for e in self._run("max_volume: -6 dB", duration=95)))
+        self.assertTrue(any("Length outside" in e for e in self._run("mean_volume: -25 dB\nmax_volume: -6 dB\n    I: -16.0 LUFS", duration=95)))
 
     def test_stale_receipt_errors_propagate(self):
         with tempfile.TemporaryDirectory() as d:
@@ -710,7 +712,7 @@ class QaTests(unittest.TestCase):
         """N7c (F7 PARTIAL, Low-Med): audibility threshold is global peak > -48 dBFS, so a nearly
         inaudible track, or one loud click in an otherwise silent video, passes. No per-scene
         narration, mean-volume or silencedetect check exists."""
-        self.assertTrue(self._run("mean_volume: -70.0 dB\nmax_volume: -47.0 dB"))
+        self.assertTrue(self._run("mean_volume: -70.0 dB\nmax_volume: -47.0 dB\n    I:         -52.0 LUFS"))
 
 
 # --------------------------------------------------------------------------
@@ -774,7 +776,8 @@ class BuildMainTests(unittest.TestCase):
         seen = []
         real = build.make_card
         with patch.object(build, "make_card",
-                          side_effect=lambda f, s, i, g, a, d=None: (seen.append(dict(g, _disclosure=d)), real(f, s, i, g, a, d))):
+                          side_effect=lambda f, s, i, g, a, d=None, *rest: (seen.append(dict(g, _disclosure=d)),
+                                                                             real(f, s, i, g, a, d, *rest))):
             self._build(no_subtitles=True)
         self.assertTrue(seen and all(g.get("_synthetic_voice") is True for g in seen))
         # the narrated outro card carries the disclosure; the un-narrated intro does not

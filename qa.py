@@ -19,7 +19,9 @@ from validate import validate
 ROOT = Path(__file__).resolve().parent
 W, H, FPS = 1080, 1920, 30
 OUTPUT = ROOT / "output/GE1013_Kilauea_2018_DRAFT.mp4"
-SPEECH_MAX_DB, SPEECH_MEAN_DB = -20.0, -40.0  # Edge TTS measures ~-3.5 dB peak, ~-20 dB mean
+# build.py normalises the mix to -16 LUFS. A narrated scene measures close to that (EBU R128
+# integrated, silence gated out); a -30 LUFS field-audio bed alone, or silence, falls far below.
+SPEECH_MIN_LUFS = -24.0
 CLIPPED_SAMPLES = 10
 BLACK = "blackdetect=d=0.5:pic_th=0.98:pix_th=0.10"
 FREEZE = "freezedetect=n=0.001:d=1.5"
@@ -39,6 +41,15 @@ def volume(output, start=None, duration=None):
         return None
     clipped = re.findall(r"histogram_0db:\s*(\d+)", result.stderr)
     return {"mean": float(mean[-1]), "max": float(peak[-1]), "clipped": int(clipped[-1]) if clipped else 0}
+
+
+def scene_loudness(output, start, duration):
+    """EBU R128 integrated loudness (LUFS) of one window of the rendered file, or None."""
+    result = _ffmpeg(["-ss", start, "-t", duration, "-i", output, "-vn", "-af", "ebur128", "-f", "null", "-"])
+    level = re.findall(r"I:\s+(-?(?:inf|\d+(?:\.\d+)?)) LUFS", result.stderr)
+    if result.returncode or not level:
+        return None
+    return float(level[-1])
 
 
 def _probe(path):
@@ -71,10 +82,18 @@ def speech_windows(root, timeline, narration):
 
 
 def run_qa(root=ROOT, output=None):
+    """Approval gate + build receipt + technical checks (used before any release)."""
     root = Path(root)
     output = Path(output) if output else root / "output" / OUTPUT.name
     errors = validate(strict=True, root=root)
     errors.extend(verify_build_receipt(root, output))
+    return errors + technical_problems(root, output)
+
+
+def technical_problems(root, output):
+    """Media checks only: format, length, audibility, clipping, black/frozen footage, clean decode."""
+    root, output = Path(root), Path(output)
+    errors = []
     missing = [tool for tool in ("ffprobe", "ffmpeg") if not shutil.which(tool)]
     if missing:
         return errors + [f"{' and '.join(missing)} not installed; audio/video QA cannot run"]
@@ -108,6 +127,9 @@ def run_qa(root=ROOT, output=None):
     if float(audio[0].get("duration", 0) or 0) < total - 0.05:
         errors.append("Audio stream shorter than the timeline (narration truncated?)")
     print(f"Media probe: {duration:.2f}s; video={len(video)}; audio={len(audio)}")
+    decode = _ffmpeg(["-v", "error", "-i", output, "-f", "null", "-"])
+    if decode.returncode or decode.stderr.strip():
+        errors.append("Rendered MP4 does not decode cleanly: " + decode.stderr.strip()[:200])
 
     whole = volume(output)
     if whole is None:
@@ -115,13 +137,13 @@ def run_qa(root=ROOT, output=None):
     elif whole["clipped"] >= CLIPPED_SAMPLES:
         errors.append(f"Digital clipping: {whole['clipped']} samples at 0 dBFS; lower the narration gain")
     for label, start, length in speech_windows(root, timeline, narration):
-        level = volume(output, start, length)
+        level = scene_loudness(output, start, length)
         if level is None:
             errors.append(f"Could not measure audio for {label}")
-        elif level["max"] < SPEECH_MAX_DB or level["mean"] < SPEECH_MEAN_DB:
-            errors.append(f"{label}: narration not audible (peak {level['max']} dB, mean {level['mean']} dB)")
+        elif level < SPEECH_MIN_LUFS:
+            errors.append(f"{label}: narration not audible ({level} LUFS < {SPEECH_MIN_LUFS} LUFS)")
         else:
-            print(f"Audio {label}: peak {level['max']} dB, mean {level['mean']} dB")
+            print(f"Audio {label}: {level} LUFS")
 
     start = 0.0
     for index, seg in enumerate(timeline["segments"]):

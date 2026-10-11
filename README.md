@@ -66,6 +66,10 @@ Không dùng giọng AI: `python pipeline.py prepare --no-tts --no-subtitles --a
 - Khi `review.json.audio.synthetic_voice` là `true`, mọi cảnh có lời đọc hiện nhãn **"Giọng đọc tổng hợp (AI) · Edge TTS"** (tiếng Anh: "Synthetic AI voice"). Giọng thu âm người thật: người duyệt khai báo `false`.
 - `python footage_report.py` đo từng clip (khung đen/đứng hình, viền đen hai bên) và đề xuất `start_seconds`/`crop` + ảnh xem trước 1 hình/giây trong `output/previews/`. **Chỉ là đề xuất**: không sửa timeline.json, không phát hiện được chữ/logo chồng lên cảnh đang chuyển động. Người duyệt phải xem, quyết định, sửa timeline rồi duyệt lại.
 
+## Bản xem thử (chưa duyệt)
+
+`python draft.py` dựng bản xem thử từ `timeline.proposed.json` (đề xuất cửa sổ clip, crop, nền intro/outro, âm thanh hiện trường). Mọi khung hình có watermark đỏ **REVIEW DRAFT · NOT APPROVED · DO NOT UPLOAD**; thiếu group.json/logo thì hiện placeholder, không tự bịa. Bản duyệt cuối vẫn phải đi qua `validate.py --strict` → `build.py` → `qa.py` → `release_check.py --export-final`.
+
 ## Kiểm tra chất lượng & dấu vết đầu ra
 
 - `download_assets.py` chỉ ghi `.sha256` + `.provenance.json` (URL gốc, URL cuối, ETag/Last-Modified, số byte, SHA256, thời lượng/kích thước/codec) **sau khi** đối chiếu Content-Length và giải mã toàn bộ luồng video thành công. Tải thiếu byte hay file hỏng bị xoá, không được ghi provenance.
