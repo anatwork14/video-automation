@@ -1,62 +1,102 @@
 {
-  "status": "DRAFT: sourced to original USGS pages, HUMAN REVIEW required",
+  "status": "DRAFT: sourced to original USGS pages (verbatim excerpts verified via Internet Archive copies, 2026-10-11), HUMAN REVIEW required",
   "claims": [
+    {
+      "id": "overview",
+      "scene": 0,
+      "claim": "In 2018 Kilauea erupted within the Leilani Estates subdivision and the summit subsided through 62 collapse events.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea",
+      "evidence_note": "SCI: \"on May 3, 2018, lava broke out onto the surface within Leilani Estates, a residential subdivision on the lower East Rift Zone of Kīlauea\"; \"In total, 62 collapse events occurred.\""
+    },
+    {
+      "id": "leilani_fissures",
+      "scene": 1,
+      "claim": "Eruptive fissures began opening inside Leilani Estates on May 3, 2018; at least 10 had erupted by May 6.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea",
+      "media_reference": "https://www.usgs.gov/news/featured-story/kilauea-volcano-erupts",
+      "evidence_note": "SCI: \"on May 3, 2018, lava broke out onto the surface within Leilani Estates\"; FS: \"As of May 6, at least 10 fissures have erupted in the subdivision.\""
+    },
     {
       "id": "fissures",
       "scene": 1,
-      "claim": "USGS filmed lava spattering at fissure 18 around 02:00 HST on 16 May 2018.",
+      "claim": "A USGS video shows spattering at fissure 18 at approximately 2:00 AM HST on May 16, 2018.",
       "reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-may-16-2018",
-      "evidence_note": "USGS May 16 video description identifies fissure 18, ~02:00 HST and authentic field audio."
-    },
-    {
-      "id": "rift_activity",
-      "scene": 2,
-      "claim": "Lower East Rift Zone eruptive fissures began May 3; USGS video near fissure 22 was captured overnight May 22 and posted May 24.",
-      "reference": "https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea",
-      "media_reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-may-24-2018",
-      "evidence_note": "USGS chronology describes May 3 initial eruption and May 24 video page specifies recording May 22."
-    },
-    {
-      "id": "kapoho",
-      "scene": 3,
-      "claim": "Fissure 8 lava entered Kapoho Bay late June 3. USGS recorded the resulting ocean entry June 4 at 06:15 and 13:38.",
-      "reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-june-4-2018",
-      "evidence_note": "USGS notes entry by June 3 10:30 PM and its two compilation recordings on June 4."
-    },
-    {
-      "id": "summit",
-      "scene": 4,
-      "claim": "A collapse/explosion event filmed at Kīlauea summit June 30 included rockfall and a small plume; magma withdrawal reduced support at summit.",
-      "reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-july-2-2018",
-      "evidence_note": "USGS footage description specifies June 30 at 14:51 HST; uploaded page July 2; explains magma drainage."
+      "evidence_note": "May 16 chronology / media item: \"This video shows spattering at fissure 18, Kīlauea Volcano's Lower East Rift Zone, at approximately 2:00 AM HST on May 16, 2018.\" Sources/Usage: Public Domain. (Who filmed it is not stated.)"
     },
     {
       "id": "magma_migration",
       "scene": 2,
-      "claim": "Magma propagated eastward along the rift zone before May 3, 2018, as recorded in volcanic and seismic observations.",
-      "reference": "https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea",
-      "evidence_note": "USGS official 2018 eruption overview: April 30 Puʻuʻōʻō collapse followed by magma dike migration and May 3 initial fissure eruptions."
+      "claim": "After the Pu'u 'O'o vent collapsed on April 30, 2018, magma propagated downrift underground and broke out at the surface on May 3.",
+      "reference": "https://www.usgs.gov/publications/2018-rift-eruption-and-summit-collapse-kilauea-volcano",
+      "media_reference": "https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea",
+      "evidence_note": "Neal et al. 2019: \"After collapse of the Pu'u 'Ō'ō vent on 30 April, magma propagated downrift.\" SCI: \"Progression of the dike down-rift was reflected in the similar spatial progression of earthquake activity, and on May 3, 2018, lava broke out onto the surface within Leilani Estates\". Pu'u 'O'o is ~20 km uprift of Leilani Estates (SCI)."
+    },
+    {
+      "id": "uas_fissure22",
+      "scene": 2,
+      "claim": "On May 22, 2018 an unmanned aircraft hovered near fissure 22 looking down on the fountaining fissure complex and channelized lava flowing toward the ocean about 5 km away.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-may-24-2018",
+      "evidence_note": "May 24 chronology: \"This footage is from an Unmanned Aircraft System (UAS) hovering near fissure 22 during the overnight hours of May 22, 2018, and looking down on the fountaining fissure complex. The view rotates upward (to the south) to track channelized lava as it flows toward the Pacific Ocean, about 3 mi (5 km) away.\" \"Video courtesy of the U.S. Department of the Interior Office of Aviation Services.\""
+    },
+    {
+      "id": "kapoho",
+      "scene": 3,
+      "claim": "A channelized fissure 8 lava flow entered the ocean at Kapoho Bay late on June 3, 2018; USGS filmed the bay from a helicopter around 6:15 a.m. and 1:38 p.m. HST on June 4.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-june-4-2018",
+      "media_reference": "https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea",
+      "evidence_note": "June 4 chronology (links atoms/video/compilation.mp4): \"This short video compilation shows conditions at Kapoho Bay during a helicopter overflight on June 4, 2018, around 6:15 a.m. HST and again around 1:38 p.m. HST. By 6:15 a.m., lava from fissure 8 had entered the ocean for over seven hours.\" SCI: \"A channelized lava flow from fissure 8 travelled in a northeast direction to enter the ocean at Kapoho Bay on June 3, 2018.\" HVO 6/4 08:39 update: local videographers reported entry at about 10:30 PM HST on June 3."
     },
     {
       "id": "laze",
       "scene": 3,
-      "claim": "Lava entering seawater creates a laze plume containing steam, hydrochloric acid, and fine volcanic glass particles; it can irritate lungs, eyes and skin.",
+      "claim": "Lava entering seawater creates laze, a corrosive mixture of seawater steam, hydrochloric acid and fine volcanic glass particles that can irritate skin, eyes and lungs.",
       "reference": "https://www.usgs.gov/news/featured-story/kilauea-volcano-erupts",
-      "evidence_note": "USGS 'Kīlauea Volcano Erupts' and Kapoho Bay laze image: laze consists of steam, HCl, and tiny volcanic glass particles with hazardous effects."
+      "evidence_note": "FS (6/12/18 caption): \"The interaction of molten lava and ocean water creates 'laze,' a corrosive mixture of seawater steam, hydrochloric acid, and fine volcanic glass particles that can irritate the skin, eyes, and lungs.\""
+    },
+    {
+      "id": "kapoho_filled",
+      "scene": 3,
+      "claim": "By the morning of June 5, 2018 the fissure 8 flow front had completely filled Kapoho Bay.",
+      "reference": "https://www.usgs.gov/news/featured-story/kilauea-volcano-erupts",
+      "media_reference": "https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea",
+      "evidence_note": "FS: \"As of the morning of June 5, the fissure 8 lava flow front had completely filled Kapoho Bay.\" SCI/FS: \"By June 6, lava had completely filled Kapoho Bay and built a delta\"."
     },
     {
       "id": "summit_mechanism",
       "scene": 4,
-      "claim": "Drainage of shallow summit magma reduced support beneath overlying rock, causing repeated collapse at Kīlauea summit.",
+      "claim": "Drainage of the shallow summit reservoir into the East Rift Zone removed support for the overlying rock and the crater floor collapsed incrementally.",
       "reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-july-2-2018",
-      "evidence_note": "USGS video detail explains magma draining to East Rift Zone slowly removes support and crater floor collapses incrementally."
+      "evidence_note": "July 2 chronology / June 30 media item: \"As magma from the shallow reservoir beneath the summit drains into the East Rift Zone, it slowly pulls away support of the rock above it. The crater floor responds by incrementally collapsing, which produces these events.\""
+    },
+    {
+      "id": "collapse_count",
+      "scene": 4,
+      "claim": "62 summit collapse events occurred between May and early August 2018, and the summit caldera deepened by more than 500 m in places.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea",
+      "media_reference": "https://www.usgs.gov/publications/2018-rift-eruption-and-summit-collapse-kilauea-volcano",
+      "evidence_note": "SCI: \"In total, 62 collapse events occurred.\" \"In total, the summit caldera deepened by more than 500 meters (1600 feet)\". Neal et al. full text: \"A total of 62 collapse events occurred between May and early August\"; \"ultimately deepening in places by more than 500 m\"."
+    },
+    {
+      "id": "summit",
+      "scene": 4,
+      "claim": "A USGS observer at Volcano House filmed the June 30, 2018 collapse/explosion event (02:51 PM HST): rockfall along the bluff and a small plume rising from Halema'uma'u crater.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-july-2-2018",
+      "evidence_note": "June 30 media item / July 2 chronology: \"On June 30, 2018, at 02:51 PM HST, a collapse/explosion event occurred at Kīlauea's summit. An ash-poor plume rose about 150 m (500 ft) above the ground ... This video, taken by a USGS observer at Volcano House, captures rockfall (brown dust visible in the center right) along the bluff and a small plume rising from the Halema'uma'u crater.\""
+    },
+    {
+      "id": "decline",
+      "scene": 5,
+      "claim": "Eruptive activity declined rapidly on August 4, 2018.",
+      "reference": "https://www.usgs.gov/publications/2018-rift-eruption-and-summit-collapse-kilauea-volcano",
+      "media_reference": "https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea",
+      "evidence_note": "Neal et al. 2019 abstract: \"Activity declined rapidly on 4 August.\" SCI: \"on August 4, 2018, lava eruption rates and SO2 emission rates at fissure 8 ... greatly decreased.\""
     },
     {
       "id": "monitoring",
       "scene": 5,
-      "claim": "Monitoring Kīlauea enabled forecasting of hazardous events and helps scientists explain hazards and risks.",
+      "claim": "HVO warned downrift residents on May 1, 2018 that an eruption was possible; monitoring enabled successful forecasting of hazardous events.",
       "reference": "https://www.usgs.gov/publications/2018-rift-eruption-and-summit-collapse-kilauea-volcano",
-      "evidence_note": "USGS/Neal et al. 2019 describes successful forecasting through careful historical observation and monitoring."
+      "evidence_note": "Neal et al. 2019 full text: \"On 1 May, HVO issued a warning to residents downrift that an eruption was possible.\" Abstract: \"Careful historical observation and monitoring of Kīlauea enabled successful forecasting of hazardous events.\" (First fissure opened 3 May.)"
     }
   ]
 }

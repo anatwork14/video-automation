@@ -2,24 +2,28 @@
   "language": "en",
   "segments": [
     {
+      "index": 0,
+      "text": "In 2018, Kīlauea erupted inside a Hawaii neighborhood as its summit collapsed. This is what USGS cameras recorded."
+    },
+    {
       "index": 1,
-      "text": "In 2018, Kīlauea Volcano in Hawaii opened a series of eruptive fissures. This is not a reconstruction. USGS scientists filmed lava spattering from fissure 18 on May 16."
+      "text": "On May 3, eruptive fissures began opening inside Leilani Estates, a neighborhood on the lower East Rift Zone. Within days, at least ten had erupted. This USGS video shows fissure 18 spattering lava at about 2 a.m. on May 16."
     },
     {
       "index": 2,
-      "text": "Why did lava appear so far from the summit? Before the eruption, magma moved underground along the East Rift Zone. Starting on May 3, new eruptive fissures opened in the lower part of the rift zone."
+      "text": "Why so far from the summit? After a vent farther up the rift collapsed on April 30, magma pushed underground, down the rift zone, until it broke the surface. On May 22, an unmanned aircraft hovered above fissure 22, looking down on fountaining lava and a channel flowing toward the ocean, about five kilometers away."
     },
     {
       "index": 3,
-      "text": "Lava from fissure 8 reached Kapoho Bay and began entering the ocean late on June 3, 2018. USGS recorded this footage on June 4. Where hot lava meets seawater, it creates a hazardous plume called laze."
+      "text": "Lava from fissure 8 rushed down a channel and reached the sea at Kapoho Bay late on June 3. USGS filmed the bay from a helicopter early on June 4. Where lava meets seawater, it creates laze: a corrosive plume of steam, hydrochloric acid and fine volcanic glass. Within two days, lava had filled the bay."
     },
     {
       "index": 4,
-      "text": "While lava erupted in the lower rift zone, magma drained from the shallow reservoir beneath the summit. The overlying rock lost its support and collapsed again and again. USGS footage from June 30 shows rockfall and a small plume of dust and gas at the crater."
+      "text": "As lava poured out down the rift, magma drained from the shallow reservoir beneath the summit. The rock above lost its support, and the caldera floor collapsed in steps: sixty-two collapse events between May and early August, deepening it by more than five hundred meters in places. On June 30, a USGS observer filmed one of them: rockfall along the caldera wall and a small plume rising from Halemaʻumaʻu."
     },
     {
       "index": 5,
-      "text": "A volcano can change both underground and at the surface. Research and direct observation help us understand these hazards and warn people about them."
+      "text": "By early August, the eruption had declined sharply. Careful monitoring had let scientists warn residents two days before lava reached the surface."
     }
   ]
 }

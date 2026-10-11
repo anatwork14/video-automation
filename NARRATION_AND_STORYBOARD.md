@@ -1,55 +1,58 @@
 # Kīlauea 2018 — narration & storyboard (English deliverable)
 
-**DRAFT. The final GE1013 video is 100% English** (narration, on-screen text, labels, course text, voice).
-Source dates were checked against USGS text by the team's research step; the video may only be submitted after the team approves content and footage.
-Real USGS footage only (no AI-generated images or video). The default narration voice is the **synthetic** Edge TTS voice `en-US-GuyNeural`, disclosed on screen.
+**DRAFT. The final GE1013 video is 100% English.** Real USGS footage only (no AI-generated images or video). Narration voice: synthetic Edge TTS `en-US-GuyNeural`, disclosed on screen. Every material statement is backed by a claim in claims.json with a verbatim USGS excerpt (verified 2026-10-11 via Internet Archive copies of the USGS pages); the team must still read the sources and approve.
 
-| Time | Authentic footage and on-screen text |
-|---|---|
-| 00–10 s | Intro: video title, group number, 3–5 names + student IDs, GE1013 course name, university/course/sponsor logos |
-| 10–32 s | USGS, 16 May 2018, fissure 18 — "16 MAY 2018 \| FISSURE 18" |
-| 32–54 s | USGS drone near fissure 22, filmed 22 May 2018 (posted 24 May) — "22 MAY 2018 \| LAVA ON THE MOVE" |
-| 54–80 s | USGS Kapoho Bay footage filmed 4 June; ocean entry began late 3 June — "4 JUNE 2018 \| KAPOHO BAY" (**source BLOCKED, see SCIENCE_AUDIT.md**) |
-| 80–109 s | USGS, 30 June, summit collapse event at Halemaʻumaʻu (posted 2 July) — "30 JUNE 2018 \| SUMMIT COLLAPSE EVENT" |
-| 109–120 s | Outro: summary and credits |
+| Time | Scene | On-screen heading — caption | Footage (proposal in timeline.proposed.json; NOT yet approved) |
+|---|---|---|---|
+| 0–10 s | Intro | KĪLAUEA 2018 — When a volcano opens a neighborhood and its summit collapses | background may22_fissure22 from 5.0 s |
+| 10–32 s | Scene 1 | 16 MAY 2018 | FISSURE 18 — About 2 a.m. HST · Lower East Rift Zone · USGS | may16_fissure18 from 7.0 s |
+| 32–54 s | Scene 2 | 22 MAY 2018 | FISSURE 22 — Unmanned aircraft view · fountains and a lava channel | may22_fissure22 from 16.0 s |
+| 54–80 s | Scene 3 | 4 JUNE 2018 | KAPOHO BAY — Filmed about 6:15 a.m. · Lava reached the sea late June 3 | jun04_kapoho from 12.0 s |
+| 80–109 s | Scene 4 | 30 JUNE 2018 | 1 OF 62 COLLAPSE EVENTS — Rockfall on the caldera wall · filmed from Volcano House | jun30_summit from 24.0 s |
+| 109–120 s | Outro | KĪLAUEA 2018 — Footage: USGS and U.S. DOI Office of Aviation Services · Science: USGS, Neal et al. (2019) | background may22_fissure22 from 91.0 s |
 
 ## Exact narration in narration.json (single source of truth)
 
-### Scene 1
+### Intro (scene 0)
 
-In 2018, Kīlauea Volcano in Hawaii opened a series of eruptive fissures. This is not a reconstruction. USGS scientists filmed lava spattering from fissure 18 on May 16.
+In 2018, Kīlauea erupted inside a Hawaii neighborhood as its summit collapsed. This is what USGS cameras recorded.
 
-### Scene 2
+### Scene 1 (scene 1)
 
-Why did lava appear so far from the summit? Before the eruption, magma moved underground along the East Rift Zone. Starting on May 3, new eruptive fissures opened in the lower part of the rift zone.
+On May 3, eruptive fissures began opening inside Leilani Estates, a neighborhood on the lower East Rift Zone. Within days, at least ten had erupted. This USGS video shows fissure 18 spattering lava at about 2 a.m. on May 16.
 
-### Scene 3
+### Scene 2 (scene 2)
 
-Lava from fissure 8 reached Kapoho Bay and began entering the ocean late on June 3, 2018. USGS recorded this footage on June 4. Where hot lava meets seawater, it creates a hazardous plume called laze.
+Why so far from the summit? After a vent farther up the rift collapsed on April 30, magma pushed underground, down the rift zone, until it broke the surface. On May 22, an unmanned aircraft hovered above fissure 22, looking down on fountaining lava and a channel flowing toward the ocean, about five kilometers away.
 
-### Scene 4
+### Scene 3 (scene 3)
 
-While lava erupted in the lower rift zone, magma drained from the shallow reservoir beneath the summit. The overlying rock lost its support and collapsed again and again. USGS footage from June 30 shows rockfall and a small plume of dust and gas at the crater.
+Lava from fissure 8 rushed down a channel and reached the sea at Kapoho Bay late on June 3. USGS filmed the bay from a helicopter early on June 4. Where lava meets seawater, it creates laze: a corrosive plume of steam, hydrochloric acid and fine volcanic glass. Within two days, lava had filled the bay.
 
-### Scene 5
+### Scene 4 (scene 4)
 
-A volcano can change both underground and at the surface. Research and direct observation help us understand these hazards and warn people about them.
+As lava poured out down the rift, magma drained from the shallow reservoir beneath the summit. The rock above lost its support, and the caldera floor collapsed in steps: sixty-two collapse events between May and early August, deepening it by more than five hundred meters in places. On June 30, a USGS observer filmed one of them: rockfall along the caldera wall and a small plume rising from Halemaʻumaʻu.
+
+### Outro (scene 5)
+
+By early August, the eruption had declined sharply. Careful monitoring had let scientists warn residents two days before lava reached the surface.
 
 
-## Translation notes for reviewers (Vietnamese draft → English)
-The English text keeps the meaning of the earlier Vietnamese draft, but uses the wording of the USGS-sourced claims in claims.json where the independent review flagged the Vietnamese as overstated:
-- Scene 1: "dung nham trào lên" (lava surging up) → "lava spattering from fissure 18" (claim `fissures`).
-- Scene 4 heading: "ĐỈNH NÚI SỤT LÚN" (summit collapse) → "SUMMIT COLLAPSE EVENT" (claim `summit`: a collapse/explosion event with rockfall and a small plume).
-- Scene 3: "tối ngày 3 tháng 6" (evening of June 3) → "late on June 3" (claim `kapoho`: entry by 10:30 PM).
-These are wording decisions for the team to confirm; nothing is approved by this change.
+## Wording decisions for reviewers
+- "This USGS video shows…" (not "USGS scientists filmed"): no USGS page names who filmed the May 16 clip.
+- Scene 4 shows ONE event: "1 OF 62 COLLAPSE EVENTS", "rockfall along the caldera wall and a small plume" (USGS: "ash-poor plume"). The collapse mechanism and the 62 events / >500 m are stated as findings from the sources, not as something visible in the clip.
+- "late on June 3": USGS June 4 page: "By 6:15 a.m., lava from fissure 8 had entered the ocean for over seven hours"; the 10:30 PM time is a local videographers' report quoted by HVO.
+- "Within two days, lava had filled the bay": USGS: completely filled by the morning of June 5.
+- "warn residents two days before": HVO warning on 1 May; first fissure 3 May.
+- Total erupted volume is deliberately NOT stated (USGS sources give different figures).
 
-## Sources
-- Magma history and mechanism: https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea
-- 16 May: https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-may-16-2018
-- 24 May: https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-may-24-2018
-- 4 June and the 3 June ocean entry (page NOT located by the independent review): https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-june-4-2018
-- Independent source for "laze": https://www.usgs.gov/news/featured-story/kilauea-volcano-erupts
-- 30 June video posted 2 July: https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-july-2-2018
+## Sources (Internet Archive copies were used because www.usgs.gov blocks automated access)
+- Overview: https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea
 - Neal et al. (2019): https://www.usgs.gov/publications/2018-rift-eruption-and-summit-collapse-kilauea-volcano
+- Feature story (laze, Kapoho, fissure count): https://www.usgs.gov/news/featured-story/kilauea-volcano-erupts
+- May 16: https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-may-16-2018
+- May 24 (May 22 UAS clip): https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-may-24-2018
+- June 4 (Kapoho compilation.mp4): https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-june-4-2018
+- July 2 (June 30 clip): https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-july-2-2018
 
-Every narrated **scene** has at least one claim in claims.json (checked by science_gate.py). Not every **sentence** has its own claim — see SCIENCE_AUDIT.md. Changing narration.json or timeline.json invalidates the script, timeline and audio approvals (hash-bound); regenerate audio with `python voiceover.py --force` and have the team re-review and re-sign.
+Changing narration.json or timeline.json invalidates the script, timeline and audio approvals (hash-bound); regenerate audio with `python voiceover.py --force`, re-review and re-sign.
