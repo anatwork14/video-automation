@@ -1,29 +1,41 @@
 {
-  "note": "Mỗi video và mỗi claim chỉ được thành viên nhóm tự đọc nguồn và tick. AI KHÔNG tự duyệt.",
+  "note": "Human review only. Use python review_hashes.py for the exact expected hashes, inspect USGS/audio/logo personally, then enter ISO8601 timestamp + registered member name. Never auto-approve.",
   "assets": {
     "may16_fissure18": {
       "approved": false,
       "reviewed_by": "",
       "reviewed_at": "",
-      "rights_checked": false
+      "rights_checked": false,
+      "approved_manifest_sha256": "",
+      "approved_media_sha256": "",
+      "rights_evidence_excerpt": ""
     },
     "may22_fissure22": {
       "approved": false,
       "reviewed_by": "",
       "reviewed_at": "",
-      "rights_checked": false
+      "rights_checked": false,
+      "approved_manifest_sha256": "",
+      "approved_media_sha256": "",
+      "rights_evidence_excerpt": ""
     },
     "jun04_kapoho": {
       "approved": false,
       "reviewed_by": "",
       "reviewed_at": "",
-      "rights_checked": false
+      "rights_checked": false,
+      "approved_manifest_sha256": "",
+      "approved_media_sha256": "",
+      "rights_evidence_excerpt": ""
     },
     "jun30_summit": {
       "approved": false,
       "reviewed_by": "",
       "reviewed_at": "",
-      "rights_checked": false
+      "rights_checked": false,
+      "approved_manifest_sha256": "",
+      "approved_media_sha256": "",
+      "rights_evidence_excerpt": ""
     }
   },
   "script_reviewed": false,
@@ -34,25 +46,52 @@
       "approved": false,
       "reviewed_by": "",
       "reviewed_at": "",
-      "source_read": false
+      "source_read": false,
+      "approved_claim_sha256": "",
+      "source_excerpt": ""
     },
     "rift_activity": {
       "approved": false,
       "reviewed_by": "",
       "reviewed_at": "",
-      "source_read": false
+      "source_read": false,
+      "approved_claim_sha256": "",
+      "source_excerpt": ""
     },
     "kapoho": {
       "approved": false,
       "reviewed_by": "",
       "reviewed_at": "",
-      "source_read": false
+      "source_read": false,
+      "approved_claim_sha256": "",
+      "source_excerpt": ""
     },
     "summit": {
       "approved": false,
       "reviewed_by": "",
       "reviewed_at": "",
-      "source_read": false
+      "source_read": false,
+      "approved_claim_sha256": "",
+      "source_excerpt": ""
     }
+  },
+  "script": {
+    "approved": false,
+    "reviewed_by": "",
+    "reviewed_at": "",
+    "approved_narration_sha256": ""
+  },
+  "logos": {
+    "approved": false,
+    "reviewed_by": "",
+    "reviewed_at": "",
+    "approved_sha256": ""
+  },
+  "audio": {
+    "approved": false,
+    "mode": "",
+    "reviewed_by": "",
+    "reviewed_at": "",
+    "approved_audio_digest": ""
   }
 }

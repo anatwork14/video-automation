@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from urllib.parse import urlparse
 from science_gate import check_claims
+from review_gate import check_reviews
 
 ROOT = Path(__file__).resolve().parent
 MEDIA_HOST = "usgs-ocapsv2-public-input-media.s3.us-west-2.amazonaws.com"
@@ -97,14 +98,15 @@ def validate(strict=False, root=ROOT):
             errors.append("Scientific claim lacks HUMAN approval: " + claim["id"])
     from media_audit import audit as audit_media
     errors.extend(audit_media(root))
-    if not review.get("script_reviewed"):
+    if review.get("script_reviewed") is not True:
         errors.append("Script still requires human scientific review")
-    if not review.get("course_logos_reviewed"):
+    if review.get("course_logos_reviewed") is not True:
         errors.append("Course/sponsor logos still require human review")
-    if group.get("language") == "en" and not review.get("english_language_reviewed"):
+    if group.get("language") == "en" and review.get("english_language_reviewed") is not True:
         errors.append("English audio/captions not reviewed")
     if not (root / "assets" / "logos_from_assignment.png").exists():
         errors.append("Missing assets/logos_from_assignment.png (run extract_logos.py)")
+    errors.extend(check_reviews(root, group, review, items, read_json("claims.json", root)["claims"], narration))
     scene_audio = all((root / "assets" / "audio" / f"{n:02d}.mp3").exists() for n in scripts)
     old_voice = root / group.get("narration_audio_file", "assets/voiceover.wav")
     if not scene_audio and not old_voice.exists():
