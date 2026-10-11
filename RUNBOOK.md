@@ -40,3 +40,10 @@ MP4 bản nháp ở `output/GE1013_Kilauea_2018_DRAFT.mp4`, xem/nghe toàn bộ 
 
 ## Kết quả kiểm thử
 CI không tải các video thật và chưa thử MP4 cuối; pass CI không chứng minh đủ điểm hoặc đủ quyền sử dụng. Kiểm chứng con người là lớp cuối.
+
+## Human approvals gắn chặt với nội dung (mới)
+- Sau khi có footage, audio và logo thật, chạy `python review_hashes.py`. Chỉ đọc/hiển thị expected digests, KHÔNG tự tick approved.
+- Điền `review.json` từ `review.example.json`: từng asset có `approved_manifest_sha256`, `approved_media_sha256`, `rights_evidence_excerpt`; từng claim có `approved_claim_sha256`, `source_excerpt` từ USGS.
+- `script.approved_narration_sha256`, `audio.approved_audio_digest` và `logos.approved_sha256` phải là hash đúng. Chèn tên thành viên duyệt thực tế và ngày ISO8601 có timezone.
+- Dù đã duyệt, đổi lời dẫn hay thay footage sẽ tự làm duyệt cũ mất hiệu lực. Với Edge TTS, `--no-subtitles` cũng không bỏ qua kiểm tra audio stale.
+- Đánh dấu `approved` đúng kiểu JSON boolean `true` và `rights_checked/source_read` tương ứng. Chuỗi `"false"` bị từ chối.

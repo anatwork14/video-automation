@@ -25,7 +25,11 @@ python pipeline.py prepare --assignment-pdf /path/to/GE1013_TIKTOK.pdf
 Lệnh prepare: kiểm tra cấu trúc → tải footage USGS → trích ảnh logo bản nháp → tạo MP3 giọng Việt từng phân cảnh → phụ đề theo WordBoundary. **Nếu clip ngắn hơn phân cảnh hoặc TTS dài hơn phân cảnh, cần chỉnh timeline/script hoặc thêm footage thật rồi chạy lại.**
 
 ### Chốt nguồn khoa học trước render
-Đọc `SCIENCE_AUDIT.md`, đối chiếu `claims.json` với USGS; nghe narration, xem video và kiểm tra quyền sử dụng + ngày quay. Thành viên nhóm tự đánh dấu `review.json` cho từng **asset** và **claim**, đánh dấu script/logos đã duyệt. AI không được tự tick và script không tự đăng.
+Đọc `SCIENCE_AUDIT.md`, đối chiếu `claims.json` với USGS; nghe narration, xem video và kiểm tra quyền sử dụng + ngày quay.
+
+**Quy trình duyệt mới (fail-closed):** chạy `python review_hashes.py` để nhận đúng SHA256 của assets/claims/narration/audio/logos. Tự điền các digest đó vào `review.json` dựa trên `review.example.json`, kèm trích dẫn bằng chứng cụ thể, tên chính xác của một thành viên đã đăng ký, `reviewed_at` ISO8601 (ví dụ `2026-10-11T13:30:00+07:00`) và boolean `true` (không phải chuỗi `"true"`). AI không được tự tích ô phê duyệt. Mọi thay đổi tệp sẽ khiến digest cũ không hợp lệ.
+
+Lưu ý: các MP4 gốc phải được tải và kiểm tra trước khi chạy `review_hashes.py`; digest tự nó **không chứng minh** video/claim đúng hay giấy phép hợp lệ. AI không được tự tick và script không tự đăng.
 
 ```bash
 python validate.py --strict
@@ -35,10 +39,12 @@ python pipeline.py render
 
 Giọng khác: `python pipeline.py prepare --voice vi-VN-HoaiMyNeural --force-tts --assignment-pdf ...`.
 
+**Không dùng giọng AI:** lệnh `prepare --no-tts --no-subtitles` rồi `pipeline.py render` sẽ tự bỏ burn caption khi chỉ có `assets/voiceover.wav`. Nếu cần phụ đề, hãy căn tay bằng Descript. Không thể sử dụng SRT thời gian ước lượng để giả làm transcript chuẩn.
+
 Không dùng giọng AI: `python pipeline.py prepare --no-tts --no-subtitles --assignment-pdf ...`, đặt `assets/voiceover.wav` (bắt đầu nói sau intro) và căn caption thủ công qua Descript hoặc phần mềm dựng. **TTS không phải giọng người thật**.
 
 ## GIỚI HẠN KHÔNG ĐƯỢC GIẤU
-1. Pipeline mới kiểm thử cú pháp/cấu trúc và unit tests trong GitHub CI; **chưa render một video thật end-to-end** bởi vì repo công khai không có bản tải MP4/giọng/logo/thông tin nhóm.
+1. CI bắt buộc cài FFmpeg và render smoke-test 1080×1920 bằng clip kiểm thử; **chưa render một video thật end-to-end** bởi vì repo công khai không có bản tải MP4/giọng/logo/thông tin nhóm.
 2. Xác minh hash file **không chứng minh** license hay độ chính xác của hình. Phải xem clip, đối chiếu USGS trực tiếp.
 3. Giọng nói có thể đọc sai tên riêng tiếng Hawaii; cần nghe và sửa script phát âm.
 4. Nguồn tư liệu cho Kapoho Bay: dung nham vào biển tối **03/06**, video ghi **04/06**. Không ghi sai ngày đầu tiên.
