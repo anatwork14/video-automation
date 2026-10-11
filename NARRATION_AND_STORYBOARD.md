@@ -44,4 +44,4 @@ Một núi lửa có thể thay đổi cả từ dưới lòng đất đến tr�
 - Video 30/6 đăng 2/7: https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-july-2-2018
 - Neal và cộng sự (2019): https://www.usgs.gov/publications/2018-rift-eruption-and-summit-collapse-kilauea-volcano
 
-Mỗi phát biểu trong narration.json có ít nhất một claim tham chiếu trong claims.json. Đây vẫn là bản nháp cần người thật so khớp nội dung footage và duyệt nguồn.
+Mỗi **cảnh** có lời đọc có ít nhất một claim trong claims.json (science_gate.py kiểm tra tự động). Không phải mọi **câu** đều có claim riêng — xem SCIENCE_AUDIT.md › Trạng thái rà soát độc lập. Đây vẫn là bản nháp cần người thật so khớp nội dung footage và duyệt nguồn.

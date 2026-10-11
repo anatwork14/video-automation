@@ -81,10 +81,39 @@ class EndToEndRender(unittest.TestCase):
         subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i",
                         "anullsrc=r=48000:cl=stereo", "-t", "8", str(self.root / "assets/audio/02.mp3")], check=True)
         from fixture_project import write_review
+        import review_gate
+        timings = _rd(self.root, "assets/audio/02.timings.json")  # consistent (but silent) TTS output
+        timings["audio_sha256"] = review_gate.sha256_file(self.root / "assets/audio/02.mp3")
+        _w(self.root, "assets/audio/02.timings.json", timings)
         write_review(self.root)  # a human re-approved the (silent) audio; QA must still catch it
         self.render(no_subtitles=True)
         errors = self.qa()
         self.assertTrue(any(e.startswith("scene 2: narration not audible") for e in errors), errors)
+
+    def test_release_check_requires_signed_human_approval_of_this_exact_mp4(self):
+        import release_check
+        from fixture_project import WHEN, sign_file
+        make_renderable_project(self.root, mode="tts")
+        final = self.render(no_subtitles=True)
+
+        def problems():
+            with contextlib.redirect_stdout(io.StringIO()):
+                return release_check.release_problems(self.root)
+        self.assertTrue(any("Missing or invalid output/final_review.json" in e for e in problems()))
+        approval = {"video_sha256": __import__("review_gate").sha256_file(final), "approved": True,
+                    "watched_full_video": True, "listened_full_audio": True,
+                    "checked_captions_and_credits": True, "reviewed_by": "Tester A", "reviewed_at": WHEN}
+        _w(self.root, "output/final_review.json", approval)
+        self.assertTrue(any("Missing output/final_review.sigs/tester-0.sig" in e for e in problems()))
+        sign_file(self.root, "tester-0", "output/final_review.json", "output/final_review.sigs")
+        self.assertEqual(problems(), [])
+        _w(self.root, "output/final_review.json", dict(approval, listened_full_audio=False))
+        sign_file(self.root, "tester-0", "output/final_review.json", "output/final_review.sigs")
+        self.assertTrue(any("listened_full_audio must be boolean true" in e for e in problems()))
+        _w(self.root, "output/final_review.json", approval)
+        sign_file(self.root, "tester-0", "output/final_review.json", "output/final_review.sigs")
+        self.render(no_subtitles=False)  # re-render: a different MP4 nobody has watched
+        self.assertTrue(any("approves a different MP4" in e for e in problems()))
 
 
 if __name__ == "__main__":

@@ -23,3 +23,19 @@ Công bố chuyên môn USGS/Neal et al. 2019: https://www.usgs.gov/publications
 
 ## Chưa kiểm chứng xong
 Chưa tự mở và xem đầy đủ các MP4 gốc ở môi trường chạy này; chưa có video cuối cùng hoặc giọng đọc do nhóm phê duyệt. Các URL nguồn tồn tại và có mô tả khoa học phù hợp, nhưng audit của con người vẫn bắt buộc.
+
+## Trạng thái rà soát độc lập (AI, 2026-10-11) — KHÔNG phải phê duyệt
+Rà soát do agent thực hiện; mọi trang www.usgs.gov đều trả 403/405 cho truy cập tự động, nên phần lớn trích dẫn chỉ đến từ đoạn trích của công cụ tìm kiếm. Chỉ bản ghi pubs.usgs.gov của Neal et al. (2019) được đọc trực tiếp. Người duyệt phải tự mở từng trang.
+
+**BLOCKED — Kapoho (claim `kapoho`, asset `jun04_kapoho`):**
+- Không tìm thấy trang `.../photo-and-video-chronology-kilauea-june-4-2018` (đã thấy các chronology 1/6, 11/6, 20/6, 25/6). Các mốc 06:15 / 13:38 HST và "lúc 22:30 ngày 3/6" xuất hiện trên trang *media item* riêng của USGS, không phải trang chronology đang trích.
+- `compilation.mp4` (68,47 s) khớp độ dài 1:08 của mục "Video Compilation of Kapoho Bay Ocean Entry", chưa gắn được với trang 4/6.
+- Không duyệt claim/asset này cho đến khi người duyệt mở được trang USGS chính xác chứa đúng tệp video, đọc phần quyền sử dụng của chính tệp đó, rồi sửa `source_page`/`reference` (việc sửa sẽ làm duyệt cũ mất hiệu lực, đúng như thiết kế).
+
+**Cần người quyết định (chưa xác thực):**
+- Cửa sổ clip: `start_seconds = 0` hiện lấy cả logo/tiêu đề/slate đen USGS (qa.py sẽ báo lỗi). `python footage_report.py` đề xuất (đo trên tệp thật): cảnh 1 ≈ 6,9 s + cắt viền đen hai bên `{"w":728,"h":1080,"x":598,"y":0}`; cảnh 2 — máy dò không thấy tiêu đề chồng trên cảnh động, xem tay thấy logo 0–1 s và tiêu đề đến ≈4 s; cảnh 3 ≈ 11,1 s (thuộc bản quay buổi sáng); cảnh 4 ≈ 4,6 s. Người duyệt phải xem và tự quyết.
+- Diễn đạt: "dung nham trào lên" (cảnh 1) cho cảnh phun bắn (spattering); tiêu đề "ĐỈNH NÚI SỤT LÚN" trên cảnh đá rơi + cột bụi nhỏ (cảnh 4); cảnh 2 lời đọc nói về magma dưới lòng đất trong khi hình là dòng dung nham trên mặt.
+- Câu chưa có claim riêng: "Năm 2018 … hàng loạt khe nứt" (cảnh 1, chỉ có bằng chứng ở `rift_activity` cảnh 2), "Vì sao … cách xa đỉnh núi?" (cảnh 2), "Một núi lửa có thể thay đổi …" (cảnh 5). Gate tự động chỉ kiểm tra mỗi *cảnh* có claim, không kiểm tra từng *câu*.
+- Credit: trang USGS ghi footage khe nứt 22 là "courtesy of the U.S. Department of the Interior Office of Aviation Services"; dải credit trong video in đúng `agency_credit`, nhưng chú thích cảnh và outro chỉ ghi "USGS".
+- Video đỉnh núi: media item có ngày 1/7, `assets.json` ghi "published July 2" (ngày chronology).
+

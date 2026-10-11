@@ -8,13 +8,29 @@ Internet is required. Service availability/permissions can change.
 import argparse
 import asyncio
 import json
+import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
-from review_gate import text_sha256
+from review_gate import sha256_file, text_sha256
 
 ROOT = Path(__file__).resolve().parent
+RATE = re.compile(r"[+-]\d{1,3}%")
+
+
+def normalize_rate_args(argv):
+    """argparse treats a value like '-5%' as an option flag; turn '--rate -5%' into '--rate=-5%'."""
+    out, i = [], 0
+    while i < len(argv):
+        if argv[i] == "--rate" and i + 1 < len(argv):
+            out.append("--rate=" + argv[i + 1])
+            i += 2
+        else:
+            out.append(argv[i])
+            i += 1
+    return out
 
 
 def text_digest(text):
@@ -100,6 +116,7 @@ async def synthesize_segment(index, text, duration, voice, rate, force=False):
             "voice": voice,
             "rate": rate,
             "text_sha256": digest,
+            "audio_sha256": sha256_file(temp_media),  # binds this timing file to these exact MP3 bytes
             "duration_seconds": round(actual, 3),
             "boundaries": boundaries,
         }
@@ -118,8 +135,8 @@ async def run(args):
     voice = select_voice(narration["language"], args.voice)
     if not shutil.which("ffprobe"):
         raise SystemExit("Install FFmpeg/ffprobe before TTS")
-    if not args.rate.endswith("%"):
-        raise SystemExit("--rate must resemble +0%, -10% or +10%")
+    if not RATE.fullmatch(args.rate):
+        raise SystemExit("--rate must be a signed percentage such as +0%, -5% or +10%")
     print("Provider: edge-tts (online, currently no API key; review service terms yourself)")
     print("Voice:", voice, "Rate:", args.rate)
     for item in narration["segments"]:
@@ -136,12 +153,12 @@ async def run(args):
     print("Voice is SYNTHETIC; inspect pronunciation and science before publishing.")
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--voice", default=None, help="vi-VN-NamMinhNeural / vi-VN-HoaiMyNeural, or matching English voice")
     parser.add_argument("--rate", default="+0%", help="e.g. +0%, -5%, +8%")
     parser.add_argument("--force", action="store_true", help="Regenerate only after reviewing changed script/voice")
-    args = parser.parse_args()
+    args = parser.parse_args(normalize_rate_args(sys.argv[1:] if argv is None else argv))
     asyncio.run(run(args))
 
 

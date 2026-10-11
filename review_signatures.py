@@ -51,7 +51,8 @@ def trust_anchor_problems(root):
     return []
 
 
-def verify_review_signatures(root, group, review_bytes, review):
+def verify_review_signatures(root, group, review_bytes, review, signature_dir=SIGNATURE_DIR,
+                             document="review.json", names=None):
     root = Path(root)
     if not shutil.which("ssh-keygen"):
         return ["ssh-keygen (OpenSSH 8.1+) is required to verify reviewer signatures"]
@@ -64,9 +65,9 @@ def verify_review_signatures(root, group, review_bytes, review):
     for number, member in enumerate(members, 1):
         if isinstance(member, dict) and isinstance(member.get("name"), str):
             by_name[member["name"]] = (number, member.get("reviewer_id"))
-    names = reviewer_names(review)
+    names = reviewer_names(review) if names is None else set(names)
     if not names:
-        errors.append("review.json names no reviewers; nothing can be verified")
+        errors.append(f"{document} names no reviewers; nothing can be verified")
     for name in sorted(names):
         number, principal = by_name.get(name, (None, None))
         if number is None:
@@ -74,9 +75,9 @@ def verify_review_signatures(root, group, review_bytes, review):
         if not isinstance(principal, str) or not PRINCIPAL.fullmatch(principal):
             errors.append(f"group.json team_members[{number}] needs a reviewer_id matching {ALLOWED_SIGNERS}")
             continue
-        signature = root / SIGNATURE_DIR / f"{principal}.sig"
+        signature = root / signature_dir / f"{principal}.sig"
         if not signature.is_file():
-            errors.append(f"Missing {SIGNATURE_DIR}/{principal}.sig (reviewer must sign the final review.json)")
+            errors.append(f"Missing {signature_dir}/{principal}.sig (reviewer must sign the final {document})")
             continue
         result = subprocess.run(
             ["ssh-keygen", "-Y", "verify", "-f", str(allowed), "-I", principal,
@@ -84,5 +85,5 @@ def verify_review_signatures(root, group, review_bytes, review):
             input=review_bytes, capture_output=True,
         )
         if result.returncode:
-            errors.append(f"Signature of reviewer_id {principal} does not verify for the current review.json")
+            errors.append(f"Signature of reviewer_id {principal} does not verify for the current {document}")
     return errors

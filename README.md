@@ -37,14 +37,16 @@ python pipeline.py render
 # output/GE1013_Kilauea_2018_DRAFT.mp4
 ```
 
-Giọng khác: `python pipeline.py prepare --voice vi-VN-HoaiMyNeural --force-tts --assignment-pdf ...`.
+Giọng khác: `python pipeline.py prepare --voice vi-VN-HoaiMyNeural --force-tts --assignment-pdf ...`. Tốc độ đọc: `--rate -5%` hoặc `--rate +8%` (phải có dấu).
+
+Trình tự đầy đủ từ chuẩn bị đến `release_check.py`: xem RUNBOOK.md › Trình tự đầy đủ.
 
 **Không dùng giọng AI:** lệnh `prepare --no-tts --no-subtitles` rồi `pipeline.py render` sẽ tự bỏ burn caption khi chỉ có `assets/voiceover.wav`. Nếu cần phụ đề, hãy căn tay bằng Descript. Không thể sử dụng SRT thời gian ước lượng để giả làm transcript chuẩn.
 
 Không dùng giọng AI: `python pipeline.py prepare --no-tts --no-subtitles --assignment-pdf ...`, đặt `assets/voiceover.wav` (bắt đầu nói sau intro) và căn caption thủ công qua Descript hoặc phần mềm dựng. **TTS không phải giọng người thật**.
 
 ## GIỚI HẠN KHÔNG ĐƯỢC GIẤU
-1. CI bắt buộc cài FFmpeg và render smoke-test 1080×1920 bằng clip kiểm thử; **chưa render một video thật end-to-end** bởi vì repo công khai không có bản tải MP4/giọng/logo/thông tin nhóm.
+1. CI (Python 3.10 và 3.12) cài FFmpeg và render end-to-end THẬT một phim 120 s 1080×1920 trên dữ liệu thử (mẫu hình FFmpeg + âm sine, có chữ ký review giả lập trong thư mục tạm) rồi chạy qa.py; CI thất bại nếu có test bị skip/expected-failure. **Chưa render video bằng footage USGS thật với review thật**, vì repo công khai không chứa MP4/giọng/logo/thông tin nhóm. CI pass không phải chứng nhận nộp bài.
 2. Xác minh hash file **không chứng minh** license hay độ chính xác của hình. Phải xem clip, đối chiếu USGS trực tiếp.
 3. Giọng nói có thể đọc sai tên riêng tiếng Hawaii; cần nghe và sửa script phát âm.
 4. Nguồn tư liệu cho Kapoho Bay: dung nham vào biển tối **03/06**, video ghi **04/06**. Không ghi sai ngày đầu tiên.

@@ -78,16 +78,21 @@ def setup_signing(root, principals):
         _git(root, "commit", "-q", "-m", "fixture reviewer keys")
 
 
-def sign_review(root, principal):
+def sign_file(root, principal, document, signature_dir):
+    """Sign <root>/<document> with the fixture key; store as <signature_dir>/<principal>.sig."""
     root = Path(root)
     key = root / KEY_DIR / principal
-    sig_dir = root / SIGNATURE_DIR
-    sig_dir.mkdir(exist_ok=True)
-    produced = root / "review.json.sig"
+    sig_dir = root / signature_dir
+    sig_dir.mkdir(parents=True, exist_ok=True)
+    produced = root / (document + ".sig")
     produced.unlink(missing_ok=True)
-    subprocess.run(["ssh-keygen", "-q", "-Y", "sign", "-f", str(key), "-n", NAMESPACE, str(root / "review.json")],
+    subprocess.run(["ssh-keygen", "-q", "-Y", "sign", "-f", str(key), "-n", NAMESPACE, str(root / document)],
                    check=True, capture_output=True)
     shutil.move(str(produced), str(sig_dir / f"{principal}.sig"))
+
+
+def sign_review(root, principal):
+    sign_file(root, principal, "review.json", SIGNATURE_DIR)
 
 
 def make_project(root, language="vi", timeline=None, members=None):
@@ -164,6 +169,7 @@ def add_tts_audio(root, stale_scene=None):
         (root / f"assets/audio/{i:02d}.mp3").write_bytes(b"mp3" + bytes([i]) * 100)
         _w(root, f"assets/audio/{i:02d}.timings.json", {
             "provider": "edge-tts", "text_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+            "audio_sha256": review_gate.sha256_file(root / f"assets/audio/{i:02d}.mp3"),
             "boundaries": [{"text": "w", "start_seconds": 0, "duration_seconds": 0.1}]})
 
 
@@ -229,6 +235,7 @@ def make_renderable_project(root, mode="tts", speech=(8.0, 8.0, 6.0), source_fil
             _w(root, f"assets/audio/{i:02d}.timings.json", {
                 "provider": "edge-tts", "synthetic_voice": True, "voice": "test", "rate": "+0%",
                 "text_sha256": review_gate.text_sha256(seg["text"]), "duration_seconds": seconds,
+                "audio_sha256": review_gate.sha256_file(root / f"assets/audio/{i:02d}.mp3"),
                 "boundaries": [{"start_seconds": round(k * step, 3), "duration_seconds": round(step * 0.8, 3),
                                 "text": w} for k, w in enumerate(words)]})
     else:

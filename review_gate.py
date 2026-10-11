@@ -126,6 +126,9 @@ def audio_evidence(root, narration, group=None):
                     metadata = json.loads(timing.read_text(encoding="utf-8"))
                     if metadata.get("text_sha256") != text_sha256(scene["text"]):
                         errors.append(f"STALE AUDIO: scene {scene['index']} TTS generated from different narration")
+                    if metadata.get("audio_sha256") != digests[-1]["sha256"]:
+                        errors.append(f"Scene {scene['index']} MP3 does not match its timing file "
+                                      "(replaced or half-written); regenerate with voiceover.py --force")
                     if metadata.get("provider") != "edge-tts":
                         errors.append(f"Unknown audio timing provider: scene {scene['index']}")
                     if not metadata.get("boundaries"):

@@ -71,3 +71,35 @@ Giới hạn: chữ ký không chống được người đang giữ private key
 **Về file tải thủ công:** không dùng `download_assets.py` để chứng thực một MP4 tự đặt vào `assets/`. Nếu tệp thiếu sidecar, di chuyển tệp ấy ra ngoài và tải lại bằng script từ URL gốc USGS. Nếu nguồn không còn khả dụng, phải tìm nguồn mới có URL/rights rõ ràng và cập nhật manifest sau khi tự kiểm tra, tuyệt đối không tạo provenance giả.
 
 **Không gửi video cũ:** mỗi lần render có `output/build_manifest.json`. Chạy `python qa.py` trước khi tải lên; input, source video, narration, review hoặc MP4 thay đổi đều bị phát hiện qua SHA256.
+
+## Trình tự đầy đủ: tạo và kiểm tra video 120 giây
+```bash
+# 0. Công cụ: Python 3.10+, FFmpeg + ffprobe (macOS: brew install ffmpeg), OpenSSH, git
+python -m pip install -r requirements.txt
+make test                                   # kiểm thử xác định (render FFmpeg thật trên dữ liệu thử)
+cp group.example.json group.json            # điền 3–5 thành viên, MSSV, reviewer_id (KHÔNG commit)
+cp review.example.json review.json          # để trống; chỉ người duyệt điền
+
+# 1. Chuẩn bị: tải footage gốc USGS (+provenance), logo, giọng TTS từng cảnh, phụ đề
+python pipeline.py prepare --assignment-pdf /path/to/GE1013_TIKTOK.pdf [--voice vi-VN-HoaiMyNeural] [--rate -5%]
+
+# 2. Đo đạc để NGƯỜI quyết định cửa sổ clip / cắt viền (không tự áp dụng)
+python footage_report.py                    # xem output/previews/*.png, sửa timeline.json nếu đồng ý
+
+# 3. Người duyệt: đọc nguồn USGS, xem clip, nghe giọng; điền review.json từ digest
+python review_hashes.py
+#    mỗi người có tên trong reviewed_by ký: ssh-keygen -Y sign -f ~/.ssh/id_ed25519 -n ge1013-review review.json
+#    rồi mv review.json.sig review.sigs/<reviewer_id>.sig
+
+# 4. Dựng + QA kỹ thuật
+python validate.py --strict
+python pipeline.py render                   # = validate --strict -> build.py -> qa.py
+open output/GE1013_Kilauea_2018_DRAFT.mp4   # xem/nghe TOÀN BỘ; đọc output/captions.srt
+
+# 5. Duyệt bản cuối đúng file MP4 này (người, không phải AI), rồi kiểm tra phát hành
+shasum -a 256 output/GE1013_Kilauea_2018_DRAFT.mp4
+#    viết output/final_review.json (xem release_check.py), ký vào output/final_review.sigs/<reviewer_id>.sig
+python release_check.py                     # PASS chỉ nghĩa là đủ điều kiện; tự đăng TikTok và nộp link thủ công
+```
+Kiểm thử gọi dịch vụ ngoài (Edge TTS trực tuyến) tách riêng: `make test-external` (gửi một câu thử tới dịch vụ).
+

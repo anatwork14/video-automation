@@ -1,6 +1,8 @@
 """Network-free regression tests of actual edge-tts boundary request."""
 import asyncio
+import contextlib
 import hashlib
+import io
 import json
 import sys
 import tempfile
@@ -26,7 +28,8 @@ class FreeTTSTests(unittest.TestCase):
             module = types.SimpleNamespace(Communicate=FakeCommunicate)
             with patch.dict(sys.modules, {"edge_tts": module}), \
                  patch.object(voiceover, "ROOT", Path(directory)), \
-                 patch.object(voiceover, "probe_duration", return_value=2.0):
+                 patch.object(voiceover, "probe_duration", return_value=2.0), \
+                 contextlib.redirect_stdout(io.StringIO()):
                 asyncio.run(voiceover.synthesize_segment(1, "Núi lửa", 10.0,
                                                          "vi-VN-NamMinhNeural", "+0%"))
                 self.assertEqual(parameters["boundary"], "WordBoundary")
