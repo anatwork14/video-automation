@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 from urllib.parse import urlparse
+from science_gate import check_claims
 
 ROOT = Path(__file__).resolve().parent
 MEDIA_HOST = "usgs-ocapsv2-public-input-media.s3.us-west-2.amazonaws.com"
@@ -57,6 +58,7 @@ def validate(strict=False, root=ROOT):
     for index, seg in enumerate(segments):
         if index and not scripts.get(index):
             errors.append(f"Missing narration for segment {index}")
+    errors.extend(check_claims(root))
     if not strict:
         return errors
 
@@ -88,6 +90,13 @@ def validate(strict=False, root=ROOT):
         file = root / "assets" / item["filename"]
         if not file.exists() or file.stat().st_size < 2048:
             errors.append(f"Missing downloaded original: {file.name}")
+    for claim in read_json("claims.json", root)["claims"]:
+        entry = review.get("claims", {}).get(claim["id"], {})
+        if not (entry.get("approved") and entry.get("source_read")
+                and entry.get("reviewed_by") and entry.get("reviewed_at")):
+            errors.append("Scientific claim lacks HUMAN approval: " + claim["id"])
+    from media_audit import audit as audit_media
+    errors.extend(audit_media(root))
     if not review.get("script_reviewed"):
         errors.append("Script still requires human scientific review")
     if not review.get("course_logos_reviewed"):
