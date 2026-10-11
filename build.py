@@ -221,6 +221,9 @@ def main():
                     "BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=32'",
                     "-c:v", "libx264", "-preset", "medium", "-crf", "21",
                     "-c:a", "copy", "-movflags", "+faststart", final])
+    from build_provenance import write_build_receipt
+    receipt = write_build_receipt(ROOT, final)
+    print("BUILD RECEIPT:", receipt)
     print("CREATED DRAFT:", final)
     print("NEXT: python qa.py; visually audit logos, dates, captions, licensing and TTS pronunciation.")
 
