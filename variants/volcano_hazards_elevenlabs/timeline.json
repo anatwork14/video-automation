@@ -1,0 +1,287 @@
+{
+  "format": "portrait_1080x1920_30fps",
+  "style": "editorial",
+  "duration_seconds": 120,
+  "music": {
+    "file": "assets/music/score.wav",
+    "lufs": -22
+  },
+  "proposal_note": "DRAFT proposal: shot windows, crops and on-screen text need human approval (footage report 2026-10-11).",
+  "segments": [
+    {
+      "kind": "intro",
+      "duration": 8,
+      "heading": "Volcanic hazards",
+      "caption": "Mechanisms, observations & evidence",
+      "shots": [
+        {
+          "asset_id": "may22_fissure22",
+          "duration": 3,
+          "label": "Fissure 22, Hawaii · 22 May 2018",
+          "start_seconds": 5.0,
+          "layout": "hook",
+          "hook_lines": [
+            "Volcanic hazards",
+            "Beyond lava"
+          ],
+          "crop": {
+            "w": 608,
+            "h": 1080,
+            "x": 420,
+            "y": 0
+          }
+        },
+        {
+          "asset_id": "ash_explosion_may24",
+          "duration": 5,
+          "label": "Kīlauea summit, Hawaii · 24 May 2018",
+          "start_seconds": 10.0,
+          "layout": "title"
+        }
+      ],
+      "show_bottom_credit": false
+    },
+    {
+      "kind": "video",
+      "duration": 17,
+      "kicker": "01 · Earthquakes",
+      "heading": "Magma intrusion & summit collapse",
+      "caption": "Distinct processes: rift intrusion and summit drainage",
+      "shots": [
+        {
+          "asset_id": "eq_cracks",
+          "duration": 5.6667,
+          "label": "Leilani Estates, Hawaii · 4 May 2018",
+          "caption": "M6.9 earthquake · 4 May 2018 · Hawaii"
+        },
+        {
+          "asset_id": "eq_shakemap",
+          "duration": 2.3667,
+          "label": "Modelled shaking intensity · USGS · 4 May 2018",
+          "cue": "magnitude 6.9",
+          "caption": "USGS ShakeMap · modelled shaking intensity"
+        },
+        {
+          "asset_id": "jun30_summit",
+          "duration": 8.9667,
+          "label": "Summit collapse-event recording · 30 Jun 2018",
+          "start_seconds": 24.0,
+          "cue": "As the summit",
+          "caption": "62 summit collapse events in 2018 · about M5 equivalent"
+        }
+      ],
+      "show_bottom_credit": false
+    },
+    {
+      "kind": "video",
+      "duration": 19,
+      "kicker": "02 · Tsunamis",
+      "heading": "What makes a tsunami",
+      "caption": "Tsunamis: sudden displacement of a large volume of water",
+      "shots": [
+        {
+          "asset_id": "diagram_tsunami_1",
+          "duration": 6.8,
+          "label": "Earthquake mechanism · schematic, not to scale"
+        },
+        {
+          "asset_id": "diagram_tsunami_2",
+          "duration": 3.7333,
+          "label": "Earthquake mechanism · schematic, not to scale",
+          "cue": "Tsunamis result"
+        },
+        {
+          "asset_id": "tsunami_model_2011",
+          "duration": 1.7333,
+          "label": "Japan 2011 earthquake tsunami · NOAA model",
+          "start_seconds": 0.3,
+          "cue": "usually",
+          "heading": "Earthquake-generated tsunami",
+          "caption": "Japan, 11 March 2011 · NOAA model, not real footage"
+        },
+        {
+          "duration": 6.7333,
+          "label": "Earthquake mechanism · schematic, not to scale",
+          "cue": "Volcanic sources",
+          "fact_card": {
+            "tag": "Volcanic mechanisms",
+            "lines": [
+              "Landslide or flank collapse",
+              "Caldera collapse",
+              "Underwater explosion",
+              "Pyroclastic flow into water"
+            ],
+            "source": "Source: NOAA tsunami.gov"
+          },
+          "heading": "Volcanic tsunami sources",
+          "caption": "Possible mechanisms · not a reconstruction of one event"
+        }
+      ],
+      "show_bottom_credit": false
+    },
+    {
+      "kind": "video",
+      "duration": 13,
+      "kicker": "03 · Ash clouds",
+      "heading": "Ash is rock, not smoke",
+      "caption": "Ash: fragments of rock and volcanic glass smaller than 2 mm",
+      "shots": [
+        {
+          "asset_id": "ash_explosion_may24",
+          "duration": 8.0667,
+          "label": "Kīlauea summit, Hawaii · 24 May 2018",
+          "start_seconds": 15.1
+        },
+        {
+          "asset_id": "tonga_goes_video",
+          "duration": 4.9333,
+          "label": "Umbrella cloud · Tonga · 15 Jan 2022 · GOES-17",
+          "start_seconds": 0.3,
+          "cue": "then spreads",
+          "caption": "Tonga, 15 Jan 2022 · umbrella cloud observation"
+        }
+      ],
+      "show_bottom_credit": false
+    },
+    {
+      "kind": "video",
+      "duration": 12,
+      "kicker": "04 · Gas & laze",
+      "heading": "Not every white cloud is ash",
+      "caption": "Volcanic gases and ocean-entry laze are distinct",
+      "shots": [
+        {
+          "asset_id": "may22_fissure22",
+          "duration": 5.3,
+          "label": "Fissure 22, Hawaii · 22 May 2018",
+          "start_seconds": 91.0,
+          "heading": "Volcanic gas composition",
+          "caption": "Water vapor, carbon dioxide and sulfur dioxide"
+        },
+        {
+          "asset_id": "jun04_kapoho",
+          "duration": 6.7,
+          "label": "Kapoho Bay, Hawaii · 4 Jun 2018, about 6:15 a.m.",
+          "start_seconds": 12.0,
+          "cue": "Ocean-entry laze",
+          "heading": "Ocean-entry laze",
+          "caption": "Seawater steam + hydrochloric acid + glass particles"
+        }
+      ],
+      "show_bottom_credit": false
+    },
+    {
+      "kind": "video",
+      "duration": 17,
+      "kicker": "05 · Krakatau 1883",
+      "heading": "Krakatau, Indonesia",
+      "caption": "1883 tsunami mechanism remains debated",
+      "shots": [
+        {
+          "asset_id": "krakatau_plate1",
+          "duration": 4.4333,
+          "label": "Lithograph after a photo of 27 May 1883 (early phase)",
+          "caption": "Early phase, May 1883 · historical lithograph"
+        },
+        {
+          "asset_id": "krakatau_tides",
+          "duration": 4.0333,
+          "label": "Indian-coast tide gauges · 27-28 Aug 1883",
+          "cue": "mostly"
+        },
+        {
+          "duration": 8.5333,
+          "fact_card": {
+            "tag": "2004 · Sumatra",
+            "lines": [
+              "M9.1 earthquake",
+              "About 230,000 deaths",
+              "NOAA estimate; counts vary"
+            ],
+            "source": "Source: NOAA tsunami.gov"
+          },
+          "cue": "Separately",
+          "kicker": "Comparison · Sumatra 2004",
+          "heading": "An earthquake-generated tsunami",
+          "caption": "26 Dec 2004 · M9.1 · NOAA death estimate"
+        }
+      ],
+      "show_bottom_credit": false
+    },
+    {
+      "kind": "video",
+      "duration": 17,
+      "kicker": "06 · Tonga 2022",
+      "heading": "Hunga Tonga-Hunga Haʻapai",
+      "caption": "Plume height and tsunami generation are different processes",
+      "shots": [
+        {
+          "asset_id": "tonga_goes_video",
+          "duration": 6.8,
+          "label": "GOES-17 · Tonga · 15 Jan 2022",
+          "start_seconds": 5.3,
+          "caption": "Plume top: about 57 km · 15 Jan 2022"
+        },
+        {
+          "duration": 10.2,
+          "fact_card": {
+            "tag": "Multiple tsunami sources",
+            "lines": [
+              "Underwater explosion",
+              "Collapse of the water cavity",
+              "Air-pressure pulse over the ocean"
+            ],
+            "source": "Source: NOAA NCEI; Lynett et al. 2022"
+          },
+          "heading": "How the sea was displaced",
+          "caption": "Mechanisms summarized from observations and modelling",
+          "cue": "Its tsunamis"
+        }
+      ],
+      "show_bottom_credit": false
+    },
+    {
+      "kind": "video",
+      "duration": 12,
+      "kicker": "07 · Stay safe",
+      "heading": "Nature's tsunami warnings",
+      "caption": "Don't wait for an official warning",
+      "shots": [
+        {
+          "asset_id": "evacuation_sign",
+          "duration": 6.4,
+          "label": "Nehalem, Oregon, USA"
+        },
+        {
+          "duration": 5.6,
+          "fact_card": {
+            "tag": "NOAA / NWS",
+            "lines": [
+              "Go to high ground or inland",
+              "Strong or long earthquake",
+              "Sea drains away or rushes in",
+              "Loud roar from the ocean"
+            ],
+            "source": "Source: weather.gov/safety/tsunami-during"
+          },
+          "cue": "Move safely"
+        }
+      ],
+      "show_bottom_credit": false
+    },
+    {
+      "kind": "outro",
+      "layout": "credits",
+      "duration": 5,
+      "heading": "Sources & credits",
+      "credits": [
+        "Visuals: USGS / HVO; NOAA NESDIS (GOES-17) & NCTR; Royal Society 1888 report (Internet Archive)",
+        "Science: USGS; NOAA tsunami.gov & NCEI; NASA; Neal et al. 2019; Proud et al. 2022; Lynett et al. 2022",
+        "Diagrams: team-made, not to scale · Music: original score",
+        "GE1013 · Group 74"
+      ],
+      "show_bottom_credit": false
+    }
+  ],
+  "edition_note": "UNAPPROVED academic documentary edition: formal titles, ElevenLabs synthetic narration with exact alignment, stronger original score; human review pending."
+}

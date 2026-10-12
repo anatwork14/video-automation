@@ -34,6 +34,8 @@ edge-tts (rany2/edge-tts, ĐÃ TÍCH HỢP mặc định), FFmpeg (FFmpeg/FFmpeg
 ## Nguồn kiểm chứng khoa học và âm thanh
 - Đọc SCIENCE_AUDIT.md và claims.json. Đối chiếu nguồn gốc theo sự kiện ngày 03–04/06 Kapoho, không lẫn ngày xảy ra với ngày quay.
 - Chỉ con người được cập nhật review.json từng claim và từng asset.
+- Agent KHÔNG BAO GIỜ tạo/ký chữ ký reviewer (`review.sigs/`, `output/final_review.sigs/`), không sửa `reviewers.allowed_signers`, không viết `output/final_review.json`.
+- `footage_report.py` chỉ đề xuất `start_seconds`/`crop`; agent không tự áp dụng vào timeline.json.
 - voiceover.py chạy Edge TTS không dùng API trả phí. KHÔNG thay đổi câu chuyện khoa học để giọng đọc nghe hay hơn.
 - subtitles.py dùng timing TTS thật, không tạo mốc thời gian đoán; nếu không có timestamps, dừng hoặc yêu cầu phụ đề chỉnh tay.
 - build.py không được tự loop video, lặp sự kiện hoặc freeze để lấp thiếu footage mà không thông báo rõ; phải dùng đủ nguồn thực.

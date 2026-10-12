@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Technical MP4 + build input-integrity checks. Human scientific QA remains mandatory."""
+"""Technical MP4 + build input-integrity checks. Human scientific QA remains mandatory.
+
+Fail-closed: missing tools or unmeasurable audio are errors, not warnings.
+Checks: build receipt, 1080x1920 @30 fps, length = timeline, per-scene narration
+audibility, digital clipping, and black/frozen frames inside each footage area
+(USGS title cards, slates and padding show up here).
+"""
 import json
 import re
 import shutil
@@ -8,55 +14,181 @@ import sys
 from pathlib import Path
 
 from build_provenance import verify_build_receipt
+from sources import is_still
 from validate import validate
 
 ROOT = Path(__file__).resolve().parent
+W, H, FPS = 1080, 1920, 30
 OUTPUT = ROOT / "output/GE1013_Kilauea_2018_DRAFT.mp4"
+# build.py normalises the mix to -16 LUFS. A narrated scene measures close to that (EBU R128
+# integrated, silence gated out); a -30 LUFS field-audio bed alone, or silence, falls far below.
+SPEECH_MIN_LUFS = -24.0
+CLIPPED_SAMPLES = 10
+BLACK = "blackdetect=d=0.5:pic_th=0.98:pix_th=0.10"
+FREEZE = "freezedetect=n=0.001:d=1.5"
 
 
-def run_qa(root=ROOT, output=OUTPUT):
-    root, output = Path(root), Path(output)
+def _ffmpeg(args):
+    return subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-nostats", *map(str, args)],
+                          capture_output=True, text=True)
+
+
+def volume(output, start=None, duration=None):
+    seek = ["-ss", start] if start is not None else []
+    limit = ["-t", duration] if start is not None else []
+    result = _ffmpeg([*seek, "-i", output, *limit, "-vn", "-af", "volumedetect", "-f", "null", "-"])
+    mean = re.findall(r"mean_volume:\s*(-?(?:inf|\d+(?:\.\d+)?)) dB", result.stderr)
+    peak = re.findall(r"max_volume:\s*(-?(?:inf|\d+(?:\.\d+)?)) dB", result.stderr)
+    if result.returncode or not mean or not peak:
+        return None
+    clipped = re.findall(r"histogram_0db:\s*(\d+)", result.stderr)
+    return {"mean": float(mean[-1]), "max": float(peak[-1]), "clipped": int(clipped[-1]) if clipped else 0}
+
+
+def scene_loudness(output, start, duration):
+    """EBU R128 integrated loudness (LUFS) of one window of the rendered file, or None."""
+    # -t AFTER -i (output option): an input-side -t can over-read concatenated files.
+    result = _ffmpeg(["-ss", start, "-i", output, "-t", duration, "-vn", "-af", "ebur128", "-f", "null", "-"])
+    level = re.findall(r"I:\s+(-?(?:inf|\d+(?:\.\d+)?)) LUFS", result.stderr)
+    if result.returncode or not level:
+        return None
+    return float(level[-1])
+
+
+def _probe(path):
+    result = subprocess.run(["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json",
+                             str(path)], capture_output=True, text=True)
+    return json.loads(result.stdout) if result.returncode == 0 else None
+
+
+def footage_rect(source_probe, seg):
+    """Where build.py placed the footage inside the 1080x1920 frame (scale-to-fit + pad)."""
+    video = [s for s in (source_probe or {}).get("streams", []) if s.get("codec_type") == "video"]
+    if not video:
+        return None
+    width, height = int(video[0]["width"]), int(video[0]["height"])
+    if seg.get("crop"):
+        width, height = int(seg["crop"]["w"]), int(seg["crop"]["h"])
+    scale = min(W / width, H / height)
+    w, h = int(width * scale) // 2 * 2, int(height * scale) // 2 * 2
+    return w, h, (W - w) // 2, (H - h) // 2
+
+
+def speech_windows(root, timeline, narration):
+    segments = timeline["segments"]
+    starts = [sum(float(s["duration"]) for s in segments[:i]) for i in range(len(segments))]
+    indices = [int(s["index"]) for s in narration.get("segments", [])]
+    if indices and all((root / "assets/audio" / f"{i:02d}.mp3").is_file() for i in indices):
+        return [(f"scene {i}", starts[i], float(segments[i]["duration"])) for i in indices]
+    intro = float(segments[0]["duration"])
+    return [("recorded narration", intro, sum(float(s["duration"]) for s in segments) - intro)]
+
+
+def run_qa(root=ROOT, output=None):
+    """Approval gate + build receipt + technical checks (used before any release)."""
+    root = Path(root)
+    output = Path(output) if output else root / "output" / OUTPUT.name
     errors = validate(strict=True, root=root)
     errors.extend(verify_build_receipt(root, output))
-    if not shutil.which("ffprobe"):
-        errors.append("ffprobe not installed")
-        return errors
+    return errors + technical_problems(root, output)
+
+
+def technical_problems(root, output):
+    """Media checks only: format, length, audibility, clipping, black/frozen footage, clean decode."""
+    root, output = Path(root), Path(output)
+    errors = []
+    missing = [tool for tool in ("ffprobe", "ffmpeg") if not shutil.which(tool)]
+    if missing:
+        return errors + [f"{' and '.join(missing)} not installed; audio/video QA cannot run"]
     if not output.is_file():
-        errors.append("Rendered MP4 not found")
-        return errors
-    result = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(output)],
-        capture_output=True, text=True,
-    )
-    if result.returncode:
-        errors.append("ffprobe cannot open rendered MP4: " + result.stderr)
-        return errors
-    data = json.loads(result.stdout)
+        return errors + ["Rendered MP4 not found"]
+    data = _probe(output)
+    if data is None:
+        return errors + ["ffprobe cannot open rendered MP4"]
+    try:
+        timeline = json.loads((root / "timeline.json").read_text(encoding="utf-8"))
+        narration = json.loads((root / "narration.json").read_text(encoding="utf-8"))
+        assets = {a["id"]: a for a in json.loads((root / "assets.json").read_text(encoding="utf-8"))["assets"]}
+    except (OSError, ValueError, KeyError) as exc:
+        return errors + [f"Cannot read project files for QA: {type(exc).__name__}"]
+    total = sum(float(s["duration"]) for s in timeline["segments"])
     duration = float(data["format"].get("duration", 0))
     video = [s for s in data.get("streams", []) if s.get("codec_type") == "video"]
     audio = [s for s in data.get("streams", []) if s.get("codec_type") == "audio"]
     if not 108 <= duration <= 132:
         errors.append(f"Length outside 108–132 seconds: {duration}")
-    if not video or (video[0].get("width"), video[0].get("height")) != (1080, 1920):
+    if abs(duration - total) > 1 / FPS + 0.05:
+        errors.append(f"Length {duration:.3f}s differs from timeline {total:.3f}s (truncation or padding)")
+    if not video or (video[0].get("width"), video[0].get("height")) != (W, H):
         errors.append("Expected 1080x1920 video")
+    elif video[0].get("r_frame_rate") != f"{FPS}/1":
+        errors.append(f"Expected {FPS} fps, got {video[0].get('r_frame_rate')}")
     if not audio:
-        errors.append("No audio stream")
-    elif int(audio[0].get("sample_rate", 0)) < 16000:
+        return errors + ["No audio stream"]
+    if int(audio[0].get("sample_rate", 0)) < 16000:
         errors.append("Audio sample rate too low")
+    if float(audio[0].get("duration", 0) or 0) < total - 0.05:
+        errors.append("Audio stream shorter than the timeline (narration truncated?)")
     print(f"Media probe: {duration:.2f}s; video={len(video)}; audio={len(audio)}")
-    if shutil.which("ffmpeg") and audio:
-        loudness = subprocess.run(
-            ["ffmpeg", "-hide_banner", "-nostats", "-i", str(output),
-             "-vn", "-af", "volumedetect", "-f", "null", "-"],
-            capture_output=True, text=True,
-        )
-        peak = re.findall(r"max_volume:\s*(-?(?:inf|\d+(?:\.\d+)?)) dB", loudness.stderr)
-        if not peak:
-            print("WARNING: audio peak measurement unavailable; human listener required")
-        elif peak[-1] == "-inf" or float(peak[-1]) < -48:
-            errors.append("Audio too quiet or silent for comfortable listening")
+    decode = _ffmpeg(["-v", "error", "-i", output, "-f", "null", "-"])
+    if decode.returncode or decode.stderr.strip():
+        errors.append("Rendered MP4 does not decode cleanly: " + decode.stderr.strip()[:200])
+    # One pixel format / colour range for the whole film (mixed full/limited range shows as wrong levels).
+    formats = _ffmpeg(["-i", output, "-an", "-vf", "showinfo", "-f", "null", "-"])
+    seen = sorted(set(re.findall(r" fmt:(\w+)", formats.stderr)))
+    if len(seen) > 1:
+        errors.append(f"Video changes pixel format/colour range mid-stream: {', '.join(seen)}")
+
+    whole = volume(output)
+    if whole is None:
+        errors.append("Audio level could not be measured; QA cannot pass without a measurement")
+    elif whole["clipped"] >= CLIPPED_SAMPLES:
+        errors.append(f"Digital clipping: {whole['clipped']} samples at 0 dBFS; lower the narration gain")
+    for label, start, length in speech_windows(root, timeline, narration):
+        level = scene_loudness(output, start, length)
+        if level is None:
+            errors.append(f"Could not measure audio for {label}")
+        elif level < SPEECH_MIN_LUFS:
+            errors.append(f"{label}: narration not audible ({level} LUFS < {SPEECH_MIN_LUFS} LUFS)")
         else:
-            print("Audio peak:", peak[-1], "dB")
+            print(f"Audio {label}: {level} LUFS")
+
+    start = 0.0
+    for index, seg in enumerate(timeline["segments"]):
+        length = float(seg["duration"])
+        if seg.get("kind") == "video":
+            windows = seg["shots"] if seg.get("shots") else [dict(seg, duration=length)]
+            offset = start
+            for k, shot in enumerate(windows):
+                where = f"Scene {index}" + (f" shot {k}" if seg.get("shots") else "")
+                media = assets.get(shot.get("asset_id"))
+                span = float(shot["duration"])
+                if shot.get("fact_card"):  # typography only: nothing to check for black/frozen footage
+                    offset += span
+                    continue
+                if not media:
+                    errors.append(f"{where}: unknown footage for black/freeze QA")
+                    offset += span
+                    continue
+                rect = footage_rect(_probe(root / "assets" / media["filename"]), shot)
+                if rect is None:
+                    errors.append(f"{where}: cannot locate footage area for black/freeze QA")
+                else:
+                    w, h, x, y = rect
+                    # Genuine stills get a deliberate slow push-in: freeze detection does not apply.
+                    checks = BLACK if is_still(media["filename"]) else f"{BLACK},{FREEZE}"
+                    result = _ffmpeg(["-ss", offset, "-i", output, "-t", span, "-an",
+                                      "-vf", f"crop={w}:{h}:{x}:{y},{checks}", "-f", "null", "-"])
+                    if result.returncode:
+                        errors.append(f"{where}: black/freeze detection failed to run")
+                    for t in re.findall(r"black_start:\s*([\d.]+)", result.stderr):
+                        errors.append(f"{where}: black footage from {offset + float(t):.2f}s "
+                                      "(USGS slate/card? choose another start_seconds)")
+                    for t in re.findall(r"freeze_start:\s*([\d.]+)", result.stderr):
+                        errors.append(f"{where}: frozen footage from {offset + float(t):.2f}s "
+                                      "(title card or padding? choose another start_seconds)")
+                offset += span
+        start += length
     return errors
 
 

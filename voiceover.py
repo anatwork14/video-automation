@@ -7,17 +7,34 @@ Internet is required. Service availability/permissions can change.
 """
 import argparse
 import asyncio
-import hashlib
 import json
+import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
+from review_gate import sha256_file, text_sha256
+
 ROOT = Path(__file__).resolve().parent
+RATE = re.compile(r"[+-]\d{1,3}%")
+
+
+def normalize_rate_args(argv):
+    """argparse treats a value like '-5%' as an option flag; turn '--rate -5%' into '--rate=-5%'."""
+    out, i = [], 0
+    while i < len(argv):
+        if argv[i] == "--rate" and i + 1 < len(argv):
+            out.append("--rate=" + argv[i + 1])
+            i += 2
+        else:
+            out.append(argv[i])
+            i += 1
+    return out
 
 
 def text_digest(text):
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return text_sha256(text)
 
 
 def select_voice(language, selected):
@@ -40,8 +57,6 @@ def probe_duration(path):
 
 
 async def synthesize_segment(index, text, duration, voice, rate, force=False):
-    import edge_tts
-
     output_dir = ROOT / "assets" / "audio"
     output_dir.mkdir(parents=True, exist_ok=True)
     media = output_dir / f"{index:02d}.mp3"
@@ -65,6 +80,8 @@ async def synthesize_segment(index, text, duration, voice, rate, force=False):
             f"Scene {index} existing manual audio has no timing metadata. "
             "Do not overwrite it: move it aside or explicitly use --force."
         )
+
+    import edge_tts  # only after the local reuse/stale checks above (no network needed for those)
 
     temp_media = media.with_suffix(".partial.mp3")
     temp_media.unlink(missing_ok=True)
@@ -99,6 +116,7 @@ async def synthesize_segment(index, text, duration, voice, rate, force=False):
             "voice": voice,
             "rate": rate,
             "text_sha256": digest,
+            "audio_sha256": sha256_file(temp_media),  # binds this timing file to these exact MP3 bytes
             "duration_seconds": round(actual, 3),
             "boundaries": boundaries,
         }
@@ -117,13 +135,13 @@ async def run(args):
     voice = select_voice(narration["language"], args.voice)
     if not shutil.which("ffprobe"):
         raise SystemExit("Install FFmpeg/ffprobe before TTS")
-    if not args.rate.endswith("%"):
-        raise SystemExit("--rate must resemble +0%, -10% or +10%")
+    if not RATE.fullmatch(args.rate):
+        raise SystemExit("--rate must be a signed percentage such as +0%, -5% or +10%")
     print("Provider: edge-tts (online, currently no API key; review service terms yourself)")
     print("Voice:", voice, "Rate:", args.rate)
     for item in narration["segments"]:
         index = item["index"]
-        if not (1 <= index < len(timeline)):
+        if not (0 <= index < len(timeline)):
             raise ValueError(f"Invalid narration index {index}")
         text = item["text"].strip()
         if not text:
@@ -135,12 +153,15 @@ async def run(args):
     print("Voice is SYNTHETIC; inspect pronunciation and science before publishing.")
 
 
-def main():
+def main(argv=None):
+    global ROOT
+    from project import take_root
+    ROOT, argv = take_root(argv, ROOT)
     parser = argparse.ArgumentParser()
     parser.add_argument("--voice", default=None, help="vi-VN-NamMinhNeural / vi-VN-HoaiMyNeural, or matching English voice")
     parser.add_argument("--rate", default="+0%", help="e.g. +0%, -5%, +8%")
     parser.add_argument("--force", action="store_true", help="Regenerate only after reviewing changed script/voice")
-    args = parser.parse_args()
+    args = parser.parse_args(normalize_rate_args(argv))
     asyncio.run(run(args))
 
 

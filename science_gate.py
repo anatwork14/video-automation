@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 from urllib.parse import urlparse
 
+from sources import evidence_host_ok
+
 
 def check_claims(root):
     issues = []
@@ -19,7 +21,7 @@ def check_claims(root):
             issues.append("Missing or repeated science claim ID")
         ids.add(key)
         index = row.get("scene")
-        if not isinstance(index, int) or not 0 <= index < len(scenes) or scenes[index].get("kind") not in ("video", "outro"):
+        if not isinstance(index, int) or not 0 <= index < len(scenes) or scenes[index].get("kind") not in ("intro", "video", "outro"):
             issues.append(f"{key}: invalid video scene index")
         else:
             covered.add(index)
@@ -29,11 +31,16 @@ def check_claims(root):
             if field not in row:
                 continue
             parsed = urlparse(row[field])
-            if parsed.scheme != "https" or parsed.hostname not in ("www.usgs.gov", "data.usgs.gov"):
-                issues.append(f"{key}: evidence link must be HTTPS on an official USGS domain")
+            if parsed.scheme != "https" or not evidence_host_ok(parsed.hostname):
+                issues.append(f"{key}: evidence link must be HTTPS on an official USGS/NOAA/NASA domain or doi.org")
         if not row.get("reference") or not row.get("evidence_note"):
             issues.append(f"{key}: source/evidence excerpt missing")
+    try:
+        narration = json.loads((root / "narration.json").read_text(encoding="utf-8"))["segments"]
+        narrated = {seg.get("index") for seg in narration if str(seg.get("text", "")).strip()}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        narrated = set()  # validate.py reports missing/invalid narration itself
     for index, scene in enumerate(scenes):
-        if scene.get("kind") == "video" and index not in covered:
+        if (scene.get("kind") == "video" or index in narrated) and index not in covered:
             issues.append(f"Scene {index} has no scientific evidence")
     return issues

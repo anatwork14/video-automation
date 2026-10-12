@@ -1,6 +1,7 @@
 # PII / credentials / full footage / renders
 group.json
 review.json
+review.sigs/
 .env
 .env.*
 !.env.example
@@ -9,6 +10,7 @@ review.json
 assets/*
 !assets/.gitkeep
 output/
+.render_archive/
 *.mp4
 *.mov
 *.wav
@@ -19,3 +21,8 @@ __pycache__/
 .pytest_cache/
 .venv/
 .DS_Store
+
+# Private group information (names, student IDs, logos) - never commit
+group_info/
+# Alternative video projects: media and renders stay local
+variants/*/assets/*

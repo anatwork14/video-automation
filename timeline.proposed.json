@@ -1,0 +1,81 @@
+{
+  "format": "portrait_1080x1920_30fps",
+  "duration_seconds": 120,
+  "segments": [
+    {
+      "kind": "intro",
+      "duration": 10,
+      "heading": "KĪLAUEA 2018",
+      "caption": "When a volcano opens a neighborhood and its summit collapses",
+      "background": {
+        "asset_id": "may22_fissure22",
+        "start_seconds": 5.0,
+        "crop": {
+          "w": 608,
+          "h": 1080,
+          "x": 420,
+          "y": 0
+        },
+        "credit": "Background: authentic USGS drone footage, fissure 22, 22 May 2018"
+      }
+    },
+    {
+      "kind": "video",
+      "asset_id": "may16_fissure18",
+      "duration": 22,
+      "heading": "16 MAY 2018 | FISSURE 18",
+      "caption": "About 2 a.m. HST · Lower East Rift Zone · USGS",
+      "start_seconds": 7.0,
+      "crop": {
+        "w": 726,
+        "h": 1080,
+        "x": 598,
+        "y": 0
+      },
+      "field_audio_lufs": -32
+    },
+    {
+      "kind": "video",
+      "asset_id": "may22_fissure22",
+      "duration": 22,
+      "heading": "22 MAY 2018 | FISSURE 22",
+      "caption": "Unmanned aircraft view · fountains and a lava channel",
+      "start_seconds": 16.0,
+      "fill": "blur"
+    },
+    {
+      "kind": "video",
+      "asset_id": "jun04_kapoho",
+      "duration": 26,
+      "heading": "4 JUNE 2018 | KAPOHO BAY",
+      "caption": "Filmed about 6:15 a.m. · Lava reached the sea late June 3",
+      "start_seconds": 12.0,
+      "fill": "blur"
+    },
+    {
+      "kind": "video",
+      "asset_id": "jun30_summit",
+      "duration": 29,
+      "heading": "30 JUNE 2018 | 1 OF 62 COLLAPSE EVENTS",
+      "caption": "Rockfall on the caldera wall · filmed from Volcano House",
+      "start_seconds": 24.0,
+      "fill": "blur"
+    },
+    {
+      "kind": "outro",
+      "duration": 11,
+      "heading": "KĪLAUEA 2018",
+      "caption": "Footage: USGS and U.S. DOI Office of Aviation Services · Science: USGS, Neal et al. (2019) · Music: original score",
+      "background": {
+        "asset_id": "may22_fissure22",
+        "start_seconds": 91.0,
+        "credit": "Background: authentic USGS drone footage, fissure 22, 22 May 2018"
+      }
+    }
+  ],
+  "proposal_note": "EDITORIAL PROPOSAL ONLY (draft.py renders it, build.py never does). Windows measured on the downloaded USGS originals with 1 fps contact sheets; a reviewer must watch each window, then copy accepted values into timeline.json and approve its hash.",
+  "music": {
+    "file": "assets/music/score.wav",
+    "lufs": -27
+  }
+}
