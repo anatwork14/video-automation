@@ -19,7 +19,7 @@ def take_root(argv=None, default=REPO):
             raise SystemExit("--root needs a directory")
         root = Path(argv[i + 1]).resolve()
         del argv[i:i + 2]
-        if not (root / "timeline.json").is_file():
-            raise SystemExit(f"{root} is not a project folder (no timeline.json)")
+        if not (root / "assets.json").is_file():
+            raise SystemExit(f"{root} is not a project folder (no assets.json)")
         return root, argv
     return default, argv

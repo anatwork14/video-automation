@@ -56,3 +56,27 @@ By early August, the eruption had declined sharply. Careful monitoring had let s
 - July 2 (June 30 clip): https://www.usgs.gov/volcanoes/kilauea/news/photo-and-video-chronology-kilauea-july-2-2018
 
 Changing narration.json or timeline.json invalidates the script, timeline and audio approvals (hash-bound); regenerate audio with `python voiceover.py --force`, re-review and re-sign.
+# Dramatic music edition — 2026-10-11
+
+Separate output: `output/GE1013_Volcano_Hazards_DRAMATIC_DRAFT.mp4`.
+The documentary visual stream, source labels, claim wording, narration and
+word-aligned captions match the existing volcano-hazards draft. The musical
+arrangement adds bass, layered upper harmonics and a restrained pulse; the music
+target rises from −28 to −22 LUFS before voice ducking. Musical pulses are a score,
+not recorded volcano or earthquake sounds. The project copy and exact new audio
+hashes are recorded in `variants/volcano_hazards_dramatic` and the output manifest.
+This music remix edition uses Edge TTS. The separate academic edition at
+`variants/volcano_hazards_elevenlabs` uses the premade George voice on the verified
+ElevenLabs free plan, with actual character alignment converted to word timings.
+The initial key failed with HTTP 401; generation succeeded after the user updated it.
+No human approvals or reviewer signatures have been created or reused.
+
+The academic edition changes the opening heading to "Volcanic hazards", its
+subtitle to "Mechanisms, observations & evidence", the hook to "Volcanic hazards / Beyond lava",
+and the earthquake heading to "Magma intrusion & summit collapse". Corrected academic
+narration, claim URLs and revised windows are documented in
+`variants/volcano_hazards_elevenlabs/NARRATION_AND_STORYBOARD.md`.
+The claims are narrowed and uncertainty made explicit. Disputed Tonga map/globe
+shots are replaced by sourced mechanism cards. The credits identify ElevenLabs
+(elevenlabs.io), free plan, and synthetic narration. Captions are rebuilt from the new voice's alignment, never copied from
+the Edge TTS speech. All new inputs invalidate earlier human approvals.

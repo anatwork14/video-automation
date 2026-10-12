@@ -1,0 +1,112 @@
+{
+  "status": "DRAFT: verbatim excerpts verified 2026-10-11 (Internet Archive copies of usgs.gov; live NOAA/NASA/USGS earthquake pages; peer-reviewed abstracts). HUMAN REVIEW required.",
+  "claims": [
+    {
+      "id": "tsunami_definition",
+      "scene": 0,
+      "claim": "A tsunami is a series of long waves caused by a large and sudden displacement of the ocean, usually by an earthquake; landslides and volcanic activity can also cause them.",
+      "reference": "https://www.noaa.gov/education/resource-collections/ocean-coasts/tsunamis",
+      "evidence_note": "NOAA: 'A tsunami is a series of extremely long waves caused by a large and sudden displacement of the ocean, usually the result of an earthquake below or near the ocean floor.' ... 'tsunamis can also be caused by landslides, volcanic activity, certain types of weather'."
+    },
+    {
+      "id": "volcano_earthquakes",
+      "scene": 0,
+      "claim": "At volcanoes, earthquakes can be caused by changing stresses from moving magma and movement of fluids through cracks.",
+      "reference": "https://www.usgs.gov/programs/VHP/monitoring-volcano-seismicity-provides-insight-volcanic-structure",
+      "evidence_note": "USGS: 'At volcanoes, VT events can occur due to \"normal\" tectonic forces, changing stresses caused by moving magma, and movement of fluids through pre-existing cracks.' (Internet Archive 20261002100947)"
+    },
+    {
+      "id": "kilauea_m69",
+      "scene": 1,
+      "claim": "A magnitude 6.9 earthquake struck Kilauea's south flank at about 12:32 p.m. HST on May 4, 2018; it was likely caused by pressure from the dike intruding into the lower East Rift Zone, with about 5 m of slip.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea",
+      "evidence_note": "USGS: 'The earthquake was likely caused by pressure induced by the dike continuing to intrude into the lower East Rift Zone.' USGS ComCat hv70116556: Mw 6.9, 2018-05-04 22:32:54 UTC. Neal et al. 2019: 'A 4 May earthquake (M6.9) produced ~5 m of fault slip.'",
+      "media_reference": "https://earthquake.usgs.gov/earthquakes/eventpage/hv70116556"
+    },
+    {
+      "id": "collapse_quakes",
+      "scene": 1,
+      "claim": "As the summit magma system drained, 62 collapse events occurred, each culminating in an earthquake of about magnitude 5.",
+      "reference": "https://www.usgs.gov/volcanoes/kilauea/science/2018-lower-east-rift-zone-eruption-and-summit-collapse-kilauea",
+      "evidence_note": "USGS: 'In total, 62 collapse events occurred.' ... 'culminated in a near-daily magnitude 5.2-5.4 earthquake.' Neal et al. 2019: 'near-daily collapses releasing energy equivalent to M4.7-M5.4 earthquakes'."
+    },
+    {
+      "id": "kilauea_small_tsunami",
+      "scene": 2,
+      "claim": "The May 4, 2018 earthquake generated only a small tsunami: about 40 cm amplitude at the Kapoho tide gauge.",
+      "reference": "https://www.ngdc.noaa.gov/hazel/hazard-service/api/v1/tsunamis/events/5678",
+      "evidence_note": "PTWC statement 3 (1:27 PM HST): 'KAPOHO 40 CM AMPLITUDE'. NOAA NCEI event 5678: maxWaterHeight 0.4 m; 'There was no threat of a tsunami, but a small tsunami was generated.'"
+    },
+    {
+      "id": "tsunami_sources",
+      "scene": 2,
+      "claim": "Most tsunamis are caused by earthquakes; volcanic tsunamis can come from pyroclastic flows, submarine explosions, caldera formation and landslides.",
+      "reference": "https://www.tsunami.gov/?page=tsunamiFAQ",
+      "evidence_note": "tsunami.gov: 'Large earthquakes below or near the ocean floor are the most common cause' ... volcanic types: 'Pyroclastic flows ... Submarine explosions relatively near the ocean surface; Caldera formation (volcanic collapse); Landslides (e.g., flank collapse, debris flows)'."
+    },
+    {
+      "id": "ash_definition",
+      "scene": 3,
+      "claim": "Volcanic ash is fragments of rock, minerals and volcanic glass smaller than 2 mm, not the product of combustion.",
+      "reference": "https://volcanoes.usgs.gov/volcanic_ash/ash.html",
+      "evidence_note": "USGS: 'Volcanic ash is not the product of combustion, like the soft fluffy material created by burning wood ... but rather consists of fragments of rocks, minerals, and volcanic glass ranging in size from sand to clay-like (from 2 mm (1/12 in) to less than 0.004 mm'."
+    },
+    {
+      "id": "umbrella_cloud",
+      "scene": 3,
+      "claim": "The 15 January 2022 Hunga Tonga-Hunga Ha'apai eruption produced an umbrella cloud about 500 km in diameter.",
+      "reference": "https://science.nasa.gov/earth/earth-observatory/hunga-tonga-hunga-haapai-erupts-149347/",
+      "evidence_note": "NASA Earth Observatory: 'a vast plume of material created what volcanologists call an umbrella cloud' ... 'The umbrella cloud was about 500 kilometers (300 miles) in diameter at its maximum extent'."
+    },
+    {
+      "id": "volcanic_gases",
+      "scene": 4,
+      "claim": "Water vapor is typically the most abundant volcanic gas, followed by carbon dioxide and sulfur dioxide.",
+      "reference": "https://pubs.usgs.gov/of/1995/0085",
+      "evidence_note": "USGS OFR 95-85: 'Water vapor is typically the most abundant volcanic gas, followed by carbon dioxide and sulfur dioxide.' and 'smoke from volcanoes ... is actually volcanic gas'."
+    },
+    {
+      "id": "laze",
+      "scene": 4,
+      "claim": "Lava entering the ocean forms laze: condensed seawater steam laced with hydrochloric acid and tiny shards of volcanic glass.",
+      "reference": "https://www.usgs.gov/observatories/hvo/lava-entering-ocean",
+      "evidence_note": "USGS HVO: 'a billowing white cloud composed of an irritating mixture of condensed, acidic seawater steam, hydrochloric acid gas, and tiny shards of volcanic glass' (Internet Archive 20231129054454)."
+    },
+    {
+      "id": "krakatau_1883",
+      "scene": 5,
+      "claim": "Krakatau's 1883 eruption and collapse caused more than 36,000 deaths, most as a result of tsunamis; the tsunami mechanism is still debated.",
+      "reference": "https://www.ngdc.noaa.gov/hazel/hazard-service/api/v1/tsunamis/events/1142",
+      "evidence_note": "Smithsonian GVP: 'This eruption caused more than 36,000 fatalities, most as a result of tsunamis' (Archive 20261006185943). Royal Society 1888: 36,380. Mechanism: Nomanbhoy & Satake 1995 (submarine explosion) vs Maeno & Imamura 2011 (pyroclastic flow entering the sea).",
+      "media_reference": "https://www.tsunami.gov/?page=tsunamiFAQ"
+    },
+    {
+      "id": "sumatra_2004",
+      "scene": 5,
+      "claim": "The 26 December 2004 M9.1 Sumatra earthquake generated the deadliest tsunami in history, with approximately 230,000 deaths.",
+      "reference": "https://www.tsunami.gov/?page=tsunamiFAQ",
+      "evidence_note": "tsunami.gov: 'A magnitude 9.1 earthquake generated the deadliest tsunami in history. ... Impacts included approximately 230,000 deaths'. USGS: thrust faulting uplifted the sea floor by several meters."
+    },
+    {
+      "id": "tonga_plume",
+      "scene": 6,
+      "claim": "The 15 January 2022 Hunga Tonga-Hunga Ha'apai plume reached about 57 km altitude, into the mesosphere.",
+      "reference": "https://science.nasa.gov/earth/earth-observatory/tonga-volcano-plume-reached-the-mesosphere-149474/",
+      "evidence_note": "Proud et al. 2022, Science, doi:10.1126/science.abo4076: 'the volcanic plume ... reached an altitude of 57 kilometers at its highest extent'. NASA: '58 kilometers (36 miles) at its highest point'."
+    },
+    {
+      "id": "tonga_tsunami",
+      "scene": 6,
+      "claim": "The Hunga Tonga-Hunga Ha'apai eruption generated tsunamis through multiple mechanisms, including the explosion near the volcano and an air-pressure pulse that circled the Earth.",
+      "reference": "https://ncei.noaa.gov/news/january-15-2022-tonga-volcanic-eruption-and-tsunami",
+      "evidence_note": "Lynett et al. 2022, Nature, doi:10.1038/s41586-022-05170-6: '(1) air-sea coupling with the initial and powerful shock wave ... (2) collapse of the water cavity created by the underwater explosion; and (3) air-sea coupling with the air-pressure pulse that circled the Earth several times, leading to a global tsunami.' NOAA NCEI: 'it also caused a massive atmospheric pressure wave that generated a series of tsunamis observed around the world.'"
+    },
+    {
+      "id": "tsunami_warning_signs",
+      "scene": 7,
+      "claim": "Natural tsunami warnings include a strong or long earthquake, the ocean draining away or rising fast, and a loud roar; do not wait for an official warning, move to high ground or inland.",
+      "reference": "https://www.weather.gov/safety/tsunami-during",
+      "evidence_note": "NWS: 'you feel a strong or long earthquake, the ocean acts strange (e.g., it looks like a fast-rising flood or a wall of water or it drains away suddenly ...) OR there is a loud roar coming from the ocean, a tsunami is possible and could arrive within minutes.' 'Do not wait for an official tsunami warning' ... 'go as high or as far inland (away from the water) as possible.'"
+    }
+  ]
+}

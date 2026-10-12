@@ -1,0 +1,37 @@
+{
+  "language": "en",
+  "segments": [
+    {
+      "index": 0,
+      "text": "Volcanic hazards extend beyond lava. They include earthquakes, ash clouds and tsunamis, produced by different physical processes."
+    },
+    {
+      "index": 1,
+      "text": "On May 4, 2018, pressure from magma intruding into Kīlauea's rift likely triggered a magnitude 6.9 earthquake. As the summit magma system drained, 62 collapse events released energy comparable to earthquakes of about magnitude five."
+    },
+    {
+      "index": 2,
+      "text": "The May 4 earthquake generated a small tsunami: about 40 centimeters amplitude at the Kapoho tide gauge. Tsunamis result from sudden displacement of a large volume of water, usually during earthquakes. Volcanic sources include landslides, caldera collapse, underwater explosions and pyroclastic flows."
+    },
+    {
+      "index": 3,
+      "text": "Explosive eruptions shatter rock into ash: sharp fragments of rock and glass smaller than two millimeters, not soot. The plume rises, then spreads into an umbrella cloud."
+    },
+    {
+      "index": 4,
+      "text": "Water vapor dominates volcanic gases, followed by carbon dioxide and sulfur dioxide. Ocean-entry laze contains seawater steam, hydrochloric acid and fine volcanic glass."
+    },
+    {
+      "index": 5,
+      "text": "Krakatau's 1883 eruption caused more than 36,000 deaths, mostly from tsunamis. Its tsunami mechanism remains debated. Separately, the 2004 Sumatra earthquake generated a tsunami with about 230,000 deaths, according to NOAA."
+    },
+    {
+      "index": 6,
+      "text": "In 2022, Hunga Tonga-Hunga Haʻapai's plume reached about 57 kilometers at its highest point. Its tsunamis had multiple sources, including the underwater explosion and an atmospheric pressure pulse that circled Earth."
+    },
+    {
+      "index": 7,
+      "text": "Near the coast, a strong or long earthquake, sudden sea-level change or an ocean roar can warn of a tsunami. Move safely to high ground or inland; don't wait for an official warning."
+    }
+  ]
+}

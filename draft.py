@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import build
-from build_provenance import tool_versions
+from build_provenance import tool_versions, snapshot
 from media_audit import audit as audit_media
 from qa import technical_problems
 from review_gate import audio_evidence, sha256_file, sha256_object
@@ -90,11 +90,18 @@ def render_review_draft(root=ROOT, timeline_file=None, no_subtitles=False, water
             print("STOP:", issue)
         raise SystemExit(1)
     mode = evidence["mode"]
+    before = snapshot(workspace)
+    code_before = {p.name: sha256_file(p) for p in ROOT.glob("*.py")}
+    fonts_before = {p.name: sha256_file(p) for p in (ROOT / "fonts").glob("*.ttf")}
     # disclose unless a human recorded the voice, or the owner chose to omit the on-screen label
-    synthetic = mode in ("edge_tts", "manual_scene") and voice_label
+    synthetic = mode in ("edge_tts", "elevenlabs_tts", "manual_scene") and voice_label
     rendered = build.render_film(workspace, group, synthetic, mode, no_subtitles,
                                  WATERMARK if watermark else None, name)
     problems = technical_problems(workspace, rendered)
+    if (before != snapshot(workspace)
+            or code_before != {p.name: sha256_file(p) for p in ROOT.glob("*.py")}
+            or fonts_before != {p.name: sha256_file(p) for p in (ROOT / "fonts").glob("*.ttf")}):
+        raise ValueError("Draft inputs, code or fonts changed during rendering; rerun the draft")
     out = root / "output"
     final = out / name
     shutil.move(str(rendered), final)
@@ -112,6 +119,7 @@ def render_review_draft(root=ROOT, timeline_file=None, no_subtitles=False, water
         "narration_sha256": sha256_object(narration), "audio_mode": mode, "audio_digest": evidence["sha256"],
         "placeholders": placeholders, "technical_qa_problems": problems,
         "tools": tool_versions(build.FONT_PATH),
+        "input_sha256": before, "render_code_sha256": code_before, "font_sha256": fonts_before,
         "note": "Not approved. The team must review sources, footage windows, script and audio, "
                 "then approve + sign and render through build.py; only release_check.py may export FINAL.",
     }

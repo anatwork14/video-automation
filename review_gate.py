@@ -117,7 +117,17 @@ def audio_evidence(root, narration, group=None):
         found = [p.is_file() for p in timing_files]
         if any(found) and not all(found):
             errors.append("Some scene voice tracks have TTS timings but others do not")
-        mode = "edge_tts" if all(found) else "manual_scene"
+        providers = set()
+        if all(found):
+            for timing in timing_files:
+                saved = load_optional_json(timing, {})
+                providers.add(saved.get("provider") if isinstance(saved, dict) else None)
+        if providers == {"elevenlabs"}:
+            mode = "elevenlabs_tts"
+        else:
+            mode = "edge_tts" if all(found) else "manual_scene"
+        if all(found) and providers not in ({"edge-tts"}, {"elevenlabs"}):
+            errors.append("Mixed or unknown TTS providers; regenerate all scenes with one provider")
         digests = []
         for scene, media, timing in zip(scripts, files, timing_files):
             digests.append({"file": media.name, "sha256": sha256_file(media)})
@@ -129,7 +139,7 @@ def audio_evidence(root, narration, group=None):
                     if metadata.get("audio_sha256") != digests[-1]["sha256"]:
                         errors.append(f"Scene {scene['index']} MP3 does not match its timing file "
                                       "(replaced or half-written); regenerate with voiceover.py --force")
-                    if metadata.get("provider") != "edge-tts":
+                    if metadata.get("provider") not in ("edge-tts", "elevenlabs"):
                         errors.append(f"Unknown audio timing provider: scene {scene['index']}")
                     if not metadata.get("boundaries"):
                         errors.append(f"Missing voice timestamp boundaries in scene {scene['index']}")
@@ -262,9 +272,9 @@ def check_reviews(root, group, review, assets, claims, narration, timeline=None,
     if not values["audio"] or audio.get("approved_audio_digest") != values["audio"]["sha256"]:
         errors.append("Audio bytes and/or narration changed since approval")
     if values["audio"] and audio.get("mode") != values["audio"]["mode"]:
-        errors.append("Audio mode must match actual input (edge_tts/manual_scene/recorded_voice)")
+        errors.append("Audio mode must match actual input (edge_tts/elevenlabs_tts/manual_scene/recorded_voice)")
     if not isinstance(audio.get("synthetic_voice"), bool):
         errors.append("Audio: synthetic_voice must be boolean true/false (declared by the reviewer)")
-    elif values["audio"] and values["audio"]["mode"] == "edge_tts" and audio["synthetic_voice"] is not True:
-        errors.append("Audio: Edge TTS narration is synthetic; synthetic_voice must be true")
+    elif values["audio"] and values["audio"]["mode"] in ("edge_tts", "elevenlabs_tts") and audio["synthetic_voice"] is not True:
+        errors.append("Audio: TTS narration is synthetic; synthetic_voice must be true")
     return errors

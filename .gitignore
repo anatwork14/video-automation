@@ -10,6 +10,7 @@ review.sigs/
 assets/*
 !assets/.gitkeep
 output/
+.render_archive/
 *.mp4
 *.mov
 *.wav

@@ -41,7 +41,7 @@ FONTS = [
 ]
 # Identical encoder settings for every segment so the concat demuxer can copy streams.
 VIDEO_ARGS = ["-c:v", "libx264", "-preset", "medium", "-crf", "21", "-pix_fmt", "yuv420p",
-              "-r", str(FPS), "-video_track_timescale", "30000"]
+              "-color_range", "tv", "-r", str(FPS), "-video_track_timescale", "30000"]
 AUDIO_FORMAT = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
 # Fixed, non-overlapping layout bands (pixels in the 1080x1920 frame).
 MARGIN, TEXT_WIDTH = 22, 990
@@ -486,7 +486,8 @@ def voice_disclosure(group, mode):
     if not group.get("_synthetic_voice"):
         return None
     text = labels(group)["synthetic_voice"]
-    return text + (" · Edge TTS" if mode == "edge_tts" else "")
+    provider = {"edge_tts": "Edge TTS", "elevenlabs_tts": "ElevenLabs"}.get(mode)
+    return text + (" · " + provider if provider else "")
 
 
 def render_film(root, group, synthetic_voice, audio_mode, no_subtitles=False, watermark=None,

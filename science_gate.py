@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 from urllib.parse import urlparse
 
+from sources import evidence_host_ok
+
 
 def check_claims(root):
     issues = []
@@ -29,8 +31,8 @@ def check_claims(root):
             if field not in row:
                 continue
             parsed = urlparse(row[field])
-            if parsed.scheme != "https" or parsed.hostname not in ("www.usgs.gov", "data.usgs.gov"):
-                issues.append(f"{key}: evidence link must be HTTPS on an official USGS domain")
+            if parsed.scheme != "https" or not evidence_host_ok(parsed.hostname):
+                issues.append(f"{key}: evidence link must be HTTPS on an official USGS/NOAA/NASA domain or doi.org")
         if not row.get("reference") or not row.get("evidence_note"):
             issues.append(f"{key}: source/evidence excerpt missing")
     try:

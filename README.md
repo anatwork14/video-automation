@@ -57,6 +57,42 @@ Không dùng giọng AI: `python pipeline.py prepare --no-tts --no-subtitles --a
 
 Đọc tiếp [RUNBOOK.md](RUNBOOK.md), [SCIENCE_AUDIT.md](SCIENCE_AUDIT.md), [AGENTS.md](AGENTS.md).
 
+## Optional ElevenLabs free-account narration
+
+`voiceover_elevenlabs.py` reads `ELEVENLABS_API_KEY` from the local ignored `.env`
+file (or the environment); it also accepts the existing spelling `EVENLABS_API_KEY`.
+Use your own account key; no shared key is bundled. It checks the account is on
+the free tier and has enough remaining quota before sending narration text.
+It does not upgrade a subscription, enable billing, or retry synthesis automatically.
+
+```bash
+python3 voiceover_elevenlabs.py --root variants/volcano_hazards --check
+# Generate only in a separate project or with --force explicitly requested:
+python3 voiceover_elevenlabs.py --root /path/to/separate/project --voice-id JBFqnCBsd6RMkjVDRZzb
+```
+
+The script uses [ElevenLabs' timestamp endpoint](https://elevenlabs.io/docs/api-reference/text-to-speech/convert-with-timestamps)
+and converts exact character alignment to word timings for existing captions.
+Audio exceeding its scene duration is rejected, never cut. Regeneration requires
+rerendering visuals and captions together; do not replace audio under old captions.
+The free-plan output requires ElevenLabs attribution when shared noncommercially;
+it has no commercial license. The team must review the
+[provider's usage terms](https://help.elevenlabs.io/hc/en-us/articles/13313564601361-Can-I-publish-the-content-I-generate-on-the-platform)
+and add the correct voice credit before approving any ElevenLabs edition.
+The already rendered dramatic edition currently uses Edge TTS, not ElevenLabs.
+
+## Dramatic music review edition
+
+`python3 dramatic_remix.py` creates a separate local project at
+`variants/volcano_hazards_dramatic` and the MP4
+`output/GE1013_Volcano_Hazards_DRAMATIC_DRAFT.mp4`. It requires the source draft's
+MP4, timeline, narration and speech hashes to match its receipt.
+The original visual stream and synchronized narration are retained. An original
+oscillator score adds bass, soft upper harmonics and a restrained pulse, mixed
+at −22 LUFS before speech ducking (previous edition: −28 LUFS).
+The manifest fingerprints the new music and audio inputs. It is an unapproved
+review draft; full human listening, rights and scientific review remain pending.
+
 **Bảo vệ bản gốc:** `download_assets.py` từ chối MP4 thủ công không có SHA256 sidecar, thay vì tự ghi hash và tin file. Với URL gốc hoạt động, hãy chuyển file nghi vấn sang chỗ khác và chạy downloader để tự tải lại từ nguồn USGS.
 
 ## Bố cục, phụ đề và công bố giọng tổng hợp

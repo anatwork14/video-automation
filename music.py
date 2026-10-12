@@ -49,14 +49,30 @@ def pad(freqs, level, pulse, detune):
     return f"{body}+{drone}+{beat}"
 
 
+# Nine-part arc for the hazards film: hook, quake, tsunami, ash, laze, Krakatau, Tonga, safety, credits.
+SCENES_9 = [
+    (["D3", "A3", "E4", "F4"], 0.60, 0.0),
+    (["D3", "A3", "F4"], 0.70, 0.30),
+    (["Bb2", "F3", "D4"], 0.75, 0.30),
+    (["G2", "D3", "Bb3"], 0.70, 0.0),
+    (["D3", "A3", "F4"], 0.60, 0.0),
+    (["G2", "D3", "Bb3"], 0.80, 0.45),
+    (["A2", "E3", "Cs4"], 0.85, 0.55),
+    (["Bb2", "F3", "D4"], 0.70, 0.0),
+    (["D3", "A3", "D4", "F4"], 0.60, 0.0),
+]
+ARCS = {6: SCENES, 9: SCENES_9}
+
+
 def build_score(durations, target):
-    if len(durations) != len(SCENES):
-        raise ValueError(f"Score is written for {len(SCENES)} scenes; timeline has {len(durations)}")
+    scenes = ARCS.get(len(durations))
+    if scenes is None:
+        raise ValueError(f"Score is written for {sorted(ARCS)} scenes; timeline has {len(durations)}")
     target = Path(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     inputs, labels = [], []
-    for k, ((chord, level, pulse), duration) in enumerate(zip(SCENES, durations)):
-        length = duration + (CROSSFADE if k < len(SCENES) - 1 else 0)
+    for k, ((chord, level, pulse), duration) in enumerate(zip(scenes, durations)):
+        length = duration + (CROSSFADE if k < len(scenes) - 1 else 0)
         freqs = [NOTE[n] for n in chord]
         expr = pad(freqs, level, pulse, 1.0) + "|" + pad(freqs, level, pulse, 1.003)
         inputs += ["-f", "lavfi", "-i", f"aevalsrc='{expr}':s=48000:d={length:.3f}"]

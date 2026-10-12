@@ -140,7 +140,7 @@ def get_one(item, root=ROOT):
     sha = hashlib.sha256()
     try:
         request = urllib.request.Request(item["download_url"], headers={
-            "User-Agent": "GE1013-source-documentary/1.0"
+            "User-Agent": "Mozilla/5.0 (compatible; GE1013-source-documentary/1.0)"
         })
         with urllib.request.urlopen(request, timeout=45) as response:
             final_url = response.geturl()
@@ -194,6 +194,9 @@ def main(argv=None):
     assets = json.loads((root / "assets.json").read_text(encoding="utf-8"))["assets"]
     failures = []
     for item in assets:
+        if item.get("origin") == "team_made":
+            print("Team-made (not downloaded; run diagrams.py):", item.get("filename"))
+            continue
         try:
             get_one(item, root)
         except Exception as exc:

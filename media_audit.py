@@ -45,7 +45,7 @@ def audit(root=ROOT):
     windows = []
     for scene in scenes:
         if isinstance(scene.get("shots"), list):
-            windows.extend(s for s in scene["shots"] if isinstance(s, dict))
+            windows.extend(s for s in scene["shots"] if isinstance(s, dict) and not s.get("fact_card"))
         elif scene.get("kind") == "video":
             windows.append(scene)
         elif isinstance(scene.get("background"), dict):  # real footage behind an intro/outro card

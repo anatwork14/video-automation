@@ -166,8 +166,33 @@ def shot_overlay(file, seg, media, shot, credit_suffix="", watermark=None):
     image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(image)
     box = draw_box(d, seg)
-    boxes = [box, draw_tag(d, shot_tag(media, shot), box[3] + 16),
-             draw_credit(d, "Credit: " + media["agency_credit"] + credit_suffix)]
+    boxes = [box, draw_tag(d, shot_tag(media, shot), box[3] + 16)]
+    if seg.get("show_bottom_credit", True):
+        boxes.append(draw_credit(d, "Credit: " + media["agency_credit"] + credit_suffix))
+    if watermark:
+        boxes.append(draw_watermark(d, watermark))
+    image.save(file)
+    return boxes
+
+
+def fact_overlay(file, seg, card, watermark=None):
+    """Typography-only shot (no imagery): heading box + fact lines + source credit."""
+    image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(image)
+    box = draw_box(d, seg)
+    boxes = [box, draw_tag(d, "FACT CARD · " + card["tag"], box[3] + 16)]
+    y = box[3] + 110
+    for k, line in enumerate(card["lines"]):
+        face, size, lines = fit(body_text(line) if k else line.upper(), (lambda s: body(s, 700)) if k else head,
+                                64 if k == 0 else 40, 30 if k == 0 else 26, SAFE_W, 2, "Fact line")
+        for text in lines:
+            d.text((SAFE_L, y), text, font=face, fill=ACCENT if k == 0 else "white")
+            y += round(size * 1.22)
+        y += 18
+    if y > SUB_TOP - 10:
+        raise ValueError("Fact card runs into the subtitle band")
+    if seg.get("show_bottom_credit", True):
+        boxes.append(draw_credit(d, card["source"]))
     if watermark:
         boxes.append(draw_watermark(d, watermark))
     image.save(file)
@@ -236,7 +261,8 @@ def card_overlay(file, seg, group, assets_dir, media=None, shot=None, credit_suf
     if media:
         y_tag = SUB_TOP - 60 if layout != "hook" else 470
         boxes.append(draw_tag(d, shot_tag(media, shot or {}), y_tag))
-        boxes.append(draw_credit(d, "Credit: " + media["agency_credit"] + credit_suffix))
+        if seg.get("show_bottom_credit", True):
+            boxes.append(draw_credit(d, "Credit: " + media["agency_credit"] + credit_suffix))
     if watermark:
         boxes.append(draw_watermark(d, watermark))
     image.save(file)
@@ -254,8 +280,18 @@ def shots_of(seg):
     return []
 
 
+CONTENT_TOP, CONTENT_BOTTOM = 460, SUB_TOP - 20  # diagrams sit between the heading box and the subtitles
+
+
 def picture_graph(media, shot, src, frames, cover):
     """Filter chain producing [bg] (exactly `frames` frames) for one real video/still."""
+    if media.get("type") == "diagram" and is_still(media):
+        # Explanatory diagrams: placed whole inside the content zone on a plain panel, never under subtitles.
+        box_w, box_h = SAFE_W + 60, CONTENT_BOTTOM - CONTENT_TOP
+        return (f"[0:v]format=rgb24,scale={box_w}:{box_h}:force_original_aspect_ratio=decrease,setsar=1[pic];"
+                f"color=c=0x0a1018:s={W}x{H}:r={build.FPS}[panel];"
+                f"[panel][pic]overlay=(W-w)/2:{CONTENT_TOP}+({box_h}-h)/2:shortest=1,"
+                f"trim=end_frame={frames},setpts=PTS-STARTPTS,setsar=1[bg]")
     if is_still(media):
         # Slow push-in on a genuine still; the whole picture stays visible (fit + blurred same-image fill).
         zoom = f"zoompan=z='1+0.05*on/{max(frames - 1, 1)}':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={build.FPS}"
@@ -294,7 +330,7 @@ def cue_chain(prefix, cues, tmp_dir, first_input, label):
 def render_scene(index, seg, asset_index, group, assets_dir, tmp_dir, cues=(), disclosure=None, watermark=None):
     duration = float(seg["duration"])
     shots = shots_of(seg)
-    credit_suffix = " · Voice: synthetic (Edge TTS)" if disclosure else ""
+    credit_suffix = " · " + disclosure if disclosure else ""
     parts, offset = [], 0.0
     if not shots:  # pure card (no footage)
         shots = [{"duration": duration}]
@@ -304,10 +340,14 @@ def render_scene(index, seg, asset_index, group, assets_dir, tmp_dir, cues=(), d
         prefix = f"{index:02d}_{k:02d}"
         media = asset_index.get(shot.get("asset_id")) if shot.get("asset_id") else None
         overlay = tmp_dir / f"{prefix}_overlay.png"
-        if seg["kind"] == "video":
-            shot_overlay(overlay, seg, media, shot, credit_suffix, watermark)
+        shot_seg = dict(seg, **{key: shot[key] for key in ("kicker", "heading", "caption") if key in shot})
+        if shot.get("fact_card"):
+            fact_overlay(overlay, shot_seg, shot["fact_card"], watermark)
+        elif seg["kind"] == "video":
+            shot_overlay(overlay, shot_seg, media, shot, credit_suffix, watermark)
         else:
-            card_overlay(overlay, seg, group, assets_dir, media, shot, credit_suffix, watermark)
+            card_seg = dict(seg, **{k: shot[k] for k in ("layout", "hook_lines", "heading", "caption") if k in shot})
+            card_overlay(overlay, card_seg, group, assets_dir, media, shot, credit_suffix, watermark)
         local = [(max(0.0, s - offset), min(length, e - offset), t) for s, e, t in cues
                  if e > offset and s < offset + length]
         if media:
@@ -318,7 +358,7 @@ def render_scene(index, seg, asset_index, group, assets_dir, tmp_dir, cues=(), d
                 _, src, start = build.source_window(asset_index, assets_dir, shot, length)
                 inputs = ["-ss", start, "-i", src]
             graph = picture_graph(media, shot, src, frames, cover=seg["kind"] != "video")
-        else:
+        else:  # fact card or pure card: dark textured panel, no imagery
             inputs = ["-f", "lavfi", "-i", f"color=c=0x0a1018:s={W}x{H}:r={build.FPS}"]
             graph = f"[0:v]trim=end_frame={frames},setpts=PTS-STARTPTS,setsar=1[bg]"
         extra, chain, last = cue_chain(prefix, local, tmp_dir, 2, "s")
@@ -327,7 +367,9 @@ def render_scene(index, seg, asset_index, group, assets_dir, tmp_dir, cues=(), d
             fade.append(f"fade=t=in:st=0:d={build.FADE}")
         if k == len(shots) - 1:
             fade.append(f"fade=t=out:st={length - build.FADE:.3f}:d={build.FADE}")
-        tail = ",".join(fade + ["format=yuv420p"])
+        # JPEG stills decode as full-range yuvj420p: convert EVERY shot to limited (TV) range so the
+        # concatenated film never switches colour range mid-stream.
+        tail = ",".join(fade + ["scale=out_range=tv", "format=yuv420p"])
         full = ";".join([graph, "[bg][1:v]overlay=0:0:shortest=1:format=auto[s0]", *chain, f"[{last}]{tail}[v]"])
         out = tmp_dir / f"{prefix}_shot.mp4"
         build.run_ffmpeg([*inputs, "-loop", "1", "-i", overlay, *extra, "-filter_complex", full,

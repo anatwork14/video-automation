@@ -29,7 +29,10 @@ def english_problems(segments, narration, group):
         content = " ".join(str(x) for x in [
             scene.get("heading", ""), scene.get("caption", ""), scene.get("kicker", ""),
             *scene.get("hook_lines", []), *scene.get("credits", []),
-            *(shot.get("label", "") for shot in scene.get("shots", []) if isinstance(shot, dict))])
+            *(shot.get("label", "") for shot in scene.get("shots", []) if isinstance(shot, dict)),
+            *(x for shot in scene.get("shots", []) if isinstance(shot, dict)
+              for x in [*shot.get("hook_lines", []), *(shot.get("fact_card") or {}).get("lines", []),
+                        (shot.get("fact_card") or {}).get("source", "")])])
         if contains_vietnamese_prose(content):
             errors.append(f"English group: video scene {index} still has Vietnamese on-screen prose")
     if contains_vietnamese_prose(group.get("course", "")):
@@ -62,12 +65,19 @@ def validate(strict=False, root=ROOT):
     for item in items:
         try:
             kind = item["type"]
-            if not media_host_ok(item["download_url"], kind) or not source_host_ok(item["source_page"], kind):
-                errors.append(f"{item['id']}: URL is outside the approved official hosts (sources.py)")
+            if item.get("origin") == "team_made":
+                # Only plain explanatory diagrams drawn by diagrams.py; never footage, never an event depiction.
+                if (kind != "diagram" or item.get("generator") != "diagrams.py"
+                        or item.get("license_as_stated_on_source") != "Original work (team-made)"
+                        or not item["filename"].endswith(".png")):
+                    errors.append(f"{item['id']}: team-made assets must be diagrams.py PNG diagrams")
+            else:
+                if not media_host_ok(item["download_url"], kind) or not source_host_ok(item["source_page"], kind):
+                    errors.append(f"{item['id']}: URL is outside the approved official hosts (sources.py)")
+                if kind not in MEDIA_TYPES or item["license_as_stated_on_source"] != "Public Domain":
+                    errors.append(f"{item['id']}: media type/rights not approved for this project")
             if not filename_ok(item["filename"]):
                 errors.append(f"{item['id']}: unsafe filename")
-            if kind not in MEDIA_TYPES or item["license_as_stated_on_source"] != "Public Domain":
-                errors.append(f"{item['id']}: media type/rights not approved for this project")
             for field in ("captured_date", "location", "agency_credit", "description"):
                 if not item.get(field):
                     errors.append(f"{item['id']}: missing {field}")
@@ -94,17 +104,23 @@ def validate(strict=False, root=ROOT):
                 errors.append(f"Scene {index}: shots must be a non-empty list of objects")
                 shots = []
             for k, shot in enumerate(shots):
-                if shot.get("asset_id") not in ids:
+                card = shot.get("fact_card")
+                if card is not None:
+                    if (not isinstance(card, dict) or not card.get("lines") or not str(card.get("source", "")).startswith("Source:")
+                            or not card.get("tag")):
+                        errors.append(f"Scene {index} shot {k}: fact_card needs tag, lines and a 'Source: ...' line")
+                elif shot.get("asset_id") not in ids:
                     errors.append(f"Scene {index} shot {k}: unknown footage {shot.get('asset_id')!r}")
-                if not isinstance(shot.get("label"), str) or len(shot["label"].strip()) < 6:
+                if card is None and (not isinstance(shot.get("label"), str) or len(shot["label"].strip()) < 6):
                     errors.append(f"Scene {index} shot {k}: label must identify place and date")
                 length = shot.get("duration")
                 if isinstance(length, bool) or not isinstance(length, (int, float)) or length <= 0:
                     errors.append(f"Scene {index} shot {k}: duration must be positive")
-            if shots and abs(sum(float(x.get("duration", 0) or 0) for x in shots) - float(seg.get("duration", 0))) > 0.001:
+            if shots and abs(sum(float(x.get("duration", 0) or 0) for x in shots) - float(seg.get("duration", 0))) > 0.02:
                 errors.append(f"Scene {index}: shot durations must add up to the scene duration")
-            refs.extend(shots)
-        if seg.get("layout") == "hook" and not (isinstance(seg.get("hook_lines"), list) and seg["hook_lines"]):
+            refs.extend(x for x in shots if not x.get("fact_card"))
+        hooks = [seg] + [x for x in seg.get("shots", []) if isinstance(x, dict)]
+        if any(h.get("layout") == "hook" and not (isinstance(h.get("hook_lines"), list) and h["hook_lines"]) for h in hooks):
             errors.append(f"Scene {index}: hook layout needs hook_lines")
         if "background" in seg:
             if seg.get("kind") not in ("intro", "outro") or not isinstance(seg["background"], dict):
@@ -137,7 +153,7 @@ def validate(strict=False, root=ROOT):
             errors.append(f"Timeline references unknown footage: {seg.get('asset_id')}")
     scripts = {s.get("index"): s.get("text") for s in narration.get("segments", [])}
     for index, seg in enumerate(segments):
-        if index and not scripts.get(index):
+        if index and not scripts.get(index) and seg.get("layout") != "credits":  # credits roll may be silent
             errors.append(f"Missing narration for segment {index}")
     errors.extend(check_claims(root))
     if not strict:

@@ -99,3 +99,42 @@ class EditorialRender(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ColourRange(unittest.TestCase):
+    def test_jpeg_still_and_video_shots_concat_with_one_colour_range(self):
+        import re
+        import qa
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            Image.new("RGB", (1200, 900), "#556677").save(d / "still.jpg", quality=90)
+            ffmpeg("-f", "lavfi", "-i", "testsrc2=size=640x360:rate=30", "-t", 3, "-c:v", "libx264",
+                   "-pix_fmt", "yuv420p", d / "clip.mp4")
+            assets = {"j": {"id": "j", "filename": "still.jpg", "type": "photo", "agency_credit": "Test"},
+                      "v": {"id": "v", "filename": "clip.mp4", "type": "real_video", "agency_credit": "Test"}}
+            seg = {"kind": "video", "duration": 3, "heading": "H", "caption": "C",
+                   "shots": [{"asset_id": "j", "duration": 1.5, "label": "Test still"},
+                             {"asset_id": "v", "duration": 1.5, "label": "Test clip"}]}
+            fast = [x if x != "medium" else "ultrafast" for x in build.VIDEO_ARGS]
+            with patch.object(build, "VIDEO_ARGS", fast):
+                out = editorial.render_scene(1, seg, assets, {}, d, d)
+            info = qa._ffmpeg(["-i", out, "-vf", "showinfo", "-f", "null", "-"])
+            self.assertEqual(sorted(set(re.findall(r" fmt:(\w+)", info.stderr))), ["yuv420p"])
+
+
+class QaWindows(unittest.TestCase):
+    def test_black_after_a_window_is_not_reported_inside_it(self):
+        import qa
+        import re
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            parts = []
+            for k, src in enumerate(("testsrc2=size=320x240:rate=30", "color=c=black:s=320x240:r=30")):
+                ffmpeg("-f", "lavfi", "-i", src, "-t", 4, *build.VIDEO_ARGS, d / f"p{k}.mp4")
+                parts.append(d / f"p{k}.mp4")
+            (d / "l.txt").write_text("".join(build.concat_line(p) for p in parts))
+            ffmpeg("-f", "concat", "-safe", "0", "-i", d / "l.txt", "-c", "copy", d / "joined.mp4")
+            first = qa._ffmpeg(["-ss", 0, "-i", d / "joined.mp4", "-t", 3.5, "-an", "-vf", qa.BLACK, "-f", "null", "-"])
+            second = qa._ffmpeg(["-ss", 4, "-i", d / "joined.mp4", "-t", 4, "-an", "-vf", qa.BLACK, "-f", "null", "-"])
+            self.assertEqual(re.findall(r"black_start", first.stderr), [])
+            self.assertTrue(re.findall(r"black_start", second.stderr))

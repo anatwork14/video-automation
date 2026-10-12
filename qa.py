@@ -34,8 +34,9 @@ def _ffmpeg(args):
 
 
 def volume(output, start=None, duration=None):
-    window = (["-ss", start, "-t", duration] if start is not None else [])
-    result = _ffmpeg([*window, "-i", output, "-vn", "-af", "volumedetect", "-f", "null", "-"])
+    seek = ["-ss", start] if start is not None else []
+    limit = ["-t", duration] if start is not None else []
+    result = _ffmpeg([*seek, "-i", output, *limit, "-vn", "-af", "volumedetect", "-f", "null", "-"])
     mean = re.findall(r"mean_volume:\s*(-?(?:inf|\d+(?:\.\d+)?)) dB", result.stderr)
     peak = re.findall(r"max_volume:\s*(-?(?:inf|\d+(?:\.\d+)?)) dB", result.stderr)
     if result.returncode or not mean or not peak:
@@ -46,7 +47,8 @@ def volume(output, start=None, duration=None):
 
 def scene_loudness(output, start, duration):
     """EBU R128 integrated loudness (LUFS) of one window of the rendered file, or None."""
-    result = _ffmpeg(["-ss", start, "-t", duration, "-i", output, "-vn", "-af", "ebur128", "-f", "null", "-"])
+    # -t AFTER -i (output option): an input-side -t can over-read concatenated files.
+    result = _ffmpeg(["-ss", start, "-i", output, "-t", duration, "-vn", "-af", "ebur128", "-f", "null", "-"])
     level = re.findall(r"I:\s+(-?(?:inf|\d+(?:\.\d+)?)) LUFS", result.stderr)
     if result.returncode or not level:
         return None
@@ -131,6 +133,11 @@ def technical_problems(root, output):
     decode = _ffmpeg(["-v", "error", "-i", output, "-f", "null", "-"])
     if decode.returncode or decode.stderr.strip():
         errors.append("Rendered MP4 does not decode cleanly: " + decode.stderr.strip()[:200])
+    # One pixel format / colour range for the whole film (mixed full/limited range shows as wrong levels).
+    formats = _ffmpeg(["-i", output, "-an", "-vf", "showinfo", "-f", "null", "-"])
+    seen = sorted(set(re.findall(r" fmt:(\w+)", formats.stderr)))
+    if len(seen) > 1:
+        errors.append(f"Video changes pixel format/colour range mid-stream: {', '.join(seen)}")
 
     whole = volume(output)
     if whole is None:
@@ -156,6 +163,9 @@ def technical_problems(root, output):
                 where = f"Scene {index}" + (f" shot {k}" if seg.get("shots") else "")
                 media = assets.get(shot.get("asset_id"))
                 span = float(shot["duration"])
+                if shot.get("fact_card"):  # typography only: nothing to check for black/frozen footage
+                    offset += span
+                    continue
                 if not media:
                     errors.append(f"{where}: unknown footage for black/freeze QA")
                     offset += span
@@ -167,7 +177,7 @@ def technical_problems(root, output):
                     w, h, x, y = rect
                     # Genuine stills get a deliberate slow push-in: freeze detection does not apply.
                     checks = BLACK if is_still(media["filename"]) else f"{BLACK},{FREEZE}"
-                    result = _ffmpeg(["-ss", offset, "-t", span, "-i", output, "-an",
+                    result = _ffmpeg(["-ss", offset, "-i", output, "-t", span, "-an",
                                       "-vf", f"crop={w}:{h}:{x}:{y},{checks}", "-f", "null", "-"])
                     if result.returncode:
                         errors.append(f"{where}: black/freeze detection failed to run")

@@ -199,7 +199,7 @@ class OriginalScore(unittest.TestCase):
 
     def test_wrong_scene_count_is_refused(self):
         import music
-        with tempfile.TemporaryDirectory() as d, self.assertRaisesRegex(ValueError, "written for 6 scenes"):
+        with tempfile.TemporaryDirectory() as d, self.assertRaisesRegex(ValueError, "written for \\[6, 9\\] scenes"):
             music.build_score([60, 60], Path(d) / "x.wav")
 
 
